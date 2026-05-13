@@ -1,0 +1,9 @@
+{
+  "name": "tripico-e2e",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "application",
+  "sourceRoot": "apps/tripico-e2e/src",
+  "implicitDependencies": ["tripico"],
+  "// targets": "to see all targets run: nx show project tripico-e2e --web",
+  "targets": {}
+}
