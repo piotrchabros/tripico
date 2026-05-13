@@ -57,7 +57,11 @@
           "buildTarget": "tripico:build:development"
         }
       },
-      "defaultConfiguration": "development"
+      "defaultConfiguration": "development",
+      "dependsOn": ["backend:serve"],
+      "options": {
+        "proxyConfig": "apps/tripico/proxy.conf.json"
+      }
     },
     "lint": {
       "executor": "@nx/eslint:lint"
