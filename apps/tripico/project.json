@@ -20,7 +20,7 @@
             "input": "apps/tripico/public"
           }
         ],
-        "styles": ["apps/tripico/src/styles.scss"]
+        "styles": ["apps/tripico/src/styles.css"]
       },
       "configurations": {
         "production": {

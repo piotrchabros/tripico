@@ -1,0 +1,20 @@
+@import 'tailwindcss';
+
+/* Tailwind v4 auto-detects content but its default heuristic misses our
+   Angular inline templates (template: ` ... ` in .ts files). Explicit
+   @source declarations cover both .html template files and .ts components
+   with inline templates. Paths are relative to this CSS file. */
+@source "../**/*.html";
+@source "../**/*.ts";
+
+:root {
+  --color-primary: #0d9488;
+}
+
+body {
+  background-color: oklch(97% .001 106.424);
+  color: oklch(21.6% .006 56.043);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}
