@@ -15,6 +15,7 @@ import {
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { AuthenticatedUser } from '../auth/types/authenticated-user';
 import { BoardService } from './board.service';
+import { CreateBoardCommentDto } from './dto/create-comment.dto';
 import { CreateBoardPostDto } from './dto/create-board-post.dto';
 import { UpdateBoardPostDto } from './dto/update-board-post.dto';
 
@@ -66,5 +67,32 @@ export class BoardController {
     @Param('id', new ParseUUIDPipe()) id: string,
   ) {
     return this.board.remove(id, user.id);
+  }
+
+  @Post('board-posts/:id/comments')
+  @HttpCode(HttpStatus.CREATED)
+  addComment(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Body() dto: CreateBoardCommentDto,
+  ) {
+    return this.board.addComment(id, user.id, dto);
+  }
+
+  @Get('board-posts/:id/comments')
+  listComments(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id', new ParseUUIDPipe()) id: string,
+  ) {
+    return this.board.listComments(id, user.id);
+  }
+
+  @Delete('board-comments/:id')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  removeComment(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id', new ParseUUIDPipe()) id: string,
+  ) {
+    return this.board.removeComment(id, user.id);
   }
 }
