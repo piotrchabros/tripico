@@ -17,6 +17,17 @@ jest.mock('argon2', () => ({
 import { PrismaService } from '../prisma/prisma.service';
 import { AuthService } from './auth.service';
 
+// devToken in the email/password reset responses is gated behind
+// EMAIL_DEV_TOKENS=true (ADR-007). Tests opt in so they can assert on the
+// dev-mode shape; production deploys leave the flag unset and the token
+// is logged only.
+beforeAll(() => {
+  process.env['EMAIL_DEV_TOKENS'] = 'true';
+});
+afterAll(() => {
+  delete process.env['EMAIL_DEV_TOKENS'];
+});
+
 const sha256 = (s: string) => createHash('sha256').update(s).digest('hex');
 
 describe('AuthService', () => {

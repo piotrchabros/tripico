@@ -5,7 +5,12 @@
   "scripts": {
     "prisma:generate": "cd apps/backend && prisma generate",
     "prisma:migrate": "cd apps/backend && prisma migrate dev",
-    "prisma:studio": "cd apps/backend && prisma studio"
+    "prisma:deploy": "cd apps/backend && prisma migrate deploy",
+    "prisma:studio": "cd apps/backend && prisma studio",
+    "backend:start": "node dist/apps/backend/main.js",
+    "backend:release": "npm run prisma:deploy && npm run prisma:generate",
+    "build:backend": "nx build backend --skip-nx-cache",
+    "build:frontend": "nx build tripico --skip-nx-cache"
   },
   "private": true,
   "dependencies": {
@@ -32,6 +37,7 @@
     "cookie-parser": "^1.4.7",
     "dotenv": "^17.4.2",
     "express": "^4.21.2",
+    "helmet": "^8.1.0",
     "pg": "^8.20.0",
     "reflect-metadata": "^0.1.13",
     "rxjs": "~7.8.0",

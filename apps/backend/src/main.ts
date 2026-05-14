@@ -4,6 +4,7 @@ dotenv.config({ path: 'apps/backend/.env' });
 import { Logger, ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import cookieParser from 'cookie-parser';
+import helmet from 'helmet';
 import { AppModule } from './app/app.module';
 import { HttpExceptionFilter } from './shared/filters/http-exception.filter';
 
@@ -12,16 +13,14 @@ async function bootstrap() {
 
   app.setGlobalPrefix('api/v1');
 
+  app.use(helmet());
   app.use(cookieParser());
 
-  // CORS: allow the local Angular dev server + Vercel preview pattern in prod.
-  // Production hardening (allowlist via env, tighter methods/headers) tracked
-  // in docs/security.md.
+  // CORS allowlist. Production: read comma-separated origins from
+  // CORS_ALLOWED_ORIGINS env var (set in Railway). Dev: localhost Angular.
+  const corsOrigin = parseCorsOrigin(process.env['CORS_ALLOWED_ORIGINS']);
   app.enableCors({
-    origin:
-      process.env['NODE_ENV'] === 'production'
-        ? [/\.tripico\.pl$/, /-tripico\.vercel\.app$/]
-        : ['http://localhost:4200'],
+    origin: corsOrigin ?? ['http://localhost:4200'],
     credentials: true,
   });
 
@@ -38,6 +37,14 @@ async function bootstrap() {
   const port = process.env.PORT || 3000;
   await app.listen(port);
   Logger.log(`🚀 API running on http://localhost:${port}/api/v1`);
+}
+
+function parseCorsOrigin(raw: string | undefined): string[] | undefined {
+  if (!raw) return undefined;
+  return raw
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
 }
 
 bootstrap();

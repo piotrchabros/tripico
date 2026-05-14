@@ -277,7 +277,7 @@ export class AuthService {
       `[email-verification] dev-mode: token for ${user.email} = ${rawToken}`,
     );
 
-    return { sent: true, expiresAt, devToken: rawToken };
+    return buildTokenResponse(expiresAt, rawToken);
   }
 
   async verifyEmail(rawToken: string) {
@@ -345,7 +345,7 @@ export class AuthService {
       `[password-reset] dev-mode: token for ${user.email} = ${rawToken}`,
     );
 
-    return { sent: true, expiresAt, devToken: rawToken } as const;
+    return buildTokenResponse(expiresAt, rawToken);
   }
 
   async resetPassword(rawToken: string, newPassword: string) {
@@ -416,4 +416,16 @@ function hashRefreshToken(raw: string): string {
 
 function hashEmailToken(raw: string): string {
   return createHash('sha256').update(raw).digest('hex');
+}
+
+/**
+ * Dev-mode token exposure (ADR-007). The raw token is only returned in the
+ * HTTP response body when EMAIL_DEV_TOKENS=true is explicitly set in the
+ * environment. Default is OFF — production deploys MUST leave this unset.
+ */
+function buildTokenResponse(expiresAt: Date, rawToken: string) {
+  const exposeDevToken = process.env['EMAIL_DEV_TOKENS'] === 'true';
+  return exposeDevToken
+    ? { sent: true, expiresAt, devToken: rawToken }
+    : { sent: true, expiresAt };
 }

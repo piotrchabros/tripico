@@ -41,7 +41,13 @@
               "maximumError": "8kb"
             }
           ],
-          "outputHashing": "all"
+          "outputHashing": "all",
+          "fileReplacements": [
+            {
+              "replace": "apps/tripico/src/environments/environment.ts",
+              "with": "apps/tripico/src/environments/environment.prod.ts"
+            }
+          ]
         },
         "development": {
           "optimization": false,

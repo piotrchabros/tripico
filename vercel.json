@@ -1,0 +1,13 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "npm run build:frontend",
+  "outputDirectory": "dist/apps/tripico",
+  "framework": null,
+  "installCommand": "npm ci",
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "https://REPLACE-WITH-RAILWAY-DOMAIN.up.railway.app/api/$1"
+    }
+  ]
+}
