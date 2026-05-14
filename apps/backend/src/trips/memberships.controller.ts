@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  ForbiddenException,
   Get,
   HttpCode,
   HttpStatus,
@@ -24,6 +25,9 @@ export class MembershipsController {
     @Param('tripId', new ParseUUIDPipe()) tripId: string,
     @Body() dto: JoinTripDto,
   ) {
+    if (!user.emailVerified) {
+      throw new ForbiddenException('EMAIL_NOT_VERIFIED');
+    }
     return this.memberships.requestJoin(tripId, user.id, dto);
   }
 

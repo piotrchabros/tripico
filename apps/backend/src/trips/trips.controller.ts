@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  ForbiddenException,
   Get,
   HttpCode,
   HttpStatus,
@@ -28,6 +29,9 @@ export class TripsController {
     @CurrentUser() user: AuthenticatedUser,
     @Body() dto: CreateTripDto,
   ) {
+    if (!user.emailVerified) {
+      throw new ForbiddenException('EMAIL_NOT_VERIFIED');
+    }
     return this.tripsService.create(user.id, dto);
   }
 

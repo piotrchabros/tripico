@@ -22,7 +22,7 @@ const sha256 = (s: string) => createHash('sha256').update(s).digest('hex');
 describe('AuthService', () => {
   let service: AuthService;
   let prisma: {
-    user: { findFirst: jest.Mock; create: jest.Mock };
+    user: { findFirst: jest.Mock; create: jest.Mock; update: jest.Mock };
     refreshToken: {
       findUnique: jest.Mock;
       create: jest.Mock;
@@ -34,7 +34,11 @@ describe('AuthService', () => {
 
   beforeEach(async () => {
     prisma = {
-      user: { findFirst: jest.fn(), create: jest.fn() },
+      user: {
+        findFirst: jest.fn(),
+        create: jest.fn(),
+        update: jest.fn().mockResolvedValue({}),
+      },
       refreshToken: {
         findUnique: jest.fn(),
         create: jest.fn().mockResolvedValue({}),
@@ -145,6 +149,7 @@ describe('AuthService', () => {
       passwordHash: 'stored-argon2-hash',
       role: 'USER',
       isPremium: false,
+      emailVerifiedAt: null as Date | null,
       displayName: 'Test',
       slug: 'test',
     };
@@ -185,6 +190,7 @@ describe('AuthService', () => {
         email: dto.email,
         displayName: 'Test',
         slug: 'test',
+        emailVerified: false,
       });
     });
 
@@ -235,6 +241,7 @@ describe('AuthService', () => {
       email: 'a@b.com',
       role: 'USER',
       isPremium: false,
+      emailVerifiedAt: null as Date | null,
       displayName: 'A',
       slug: 'a',
     };
@@ -323,6 +330,92 @@ describe('AuthService', () => {
     it('no-ops when token is undefined', async () => {
       await service.logout(undefined);
       expect(prisma.refreshToken.updateMany).not.toHaveBeenCalled();
+    });
+  });
+
+  // -------------------- email verification --------------------
+
+  describe('requestEmailVerification', () => {
+    it('persists hashed token + expiry, returns devToken (mock-email)', async () => {
+      prisma.user.findFirst.mockResolvedValue({
+        id: 'u-1',
+        email: 'a@b.com',
+        emailVerifiedAt: null,
+      });
+      prisma.user.update.mockResolvedValue({});
+
+      const res = await service.requestEmailVerification('u-1');
+
+      expect(prisma.user.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'u-1' },
+          data: expect.objectContaining({
+            emailVerificationTokenHash: expect.any(String),
+            emailVerificationExpiresAt: expect.any(Date),
+          }),
+        }),
+      );
+      expect(res.sent).toBe(true);
+      expect(typeof res.devToken).toBe('string');
+    });
+
+    it('throws EMAIL_ALREADY_VERIFIED when user is already verified', async () => {
+      prisma.user.findFirst.mockResolvedValue({
+        id: 'u-1',
+        email: 'a@b.com',
+        emailVerifiedAt: new Date('2026-01-01'),
+      });
+      await expect(service.requestEmailVerification('u-1')).rejects.toThrow(
+        /EMAIL_ALREADY_VERIFIED/,
+      );
+    });
+  });
+
+  describe('verifyEmail', () => {
+    it('marks user verified and clears token on valid token', async () => {
+      prisma.user.findFirst.mockResolvedValue({
+        id: 'u-1',
+        emailVerificationExpiresAt: new Date(Date.now() + 60_000),
+        emailVerifiedAt: null,
+      });
+      prisma.user.update.mockResolvedValue({});
+      const res = await service.verifyEmail('raw-token');
+      expect(res).toEqual({ verified: true });
+      expect(prisma.user.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'u-1' },
+          data: {
+            emailVerifiedAt: expect.any(Date),
+            emailVerificationTokenHash: null,
+            emailVerificationExpiresAt: null,
+          },
+        }),
+      );
+    });
+
+    it('throws INVALID_TOKEN when no user matches the hash', async () => {
+      prisma.user.findFirst.mockResolvedValue(null);
+      await expect(service.verifyEmail('x')).rejects.toThrow(/INVALID_TOKEN/);
+    });
+
+    it('throws TOKEN_EXPIRED when expiry passed', async () => {
+      prisma.user.findFirst.mockResolvedValue({
+        id: 'u-1',
+        emailVerificationExpiresAt: new Date(Date.now() - 1000),
+        emailVerifiedAt: null,
+      });
+      await expect(service.verifyEmail('x')).rejects.toThrow(/TOKEN_EXPIRED/);
+    });
+
+    it('throws EMAIL_ALREADY_VERIFIED if user already verified', async () => {
+      prisma.user.findFirst.mockResolvedValue({
+        id: 'u-1',
+        emailVerificationExpiresAt: new Date(Date.now() + 60_000),
+        emailVerifiedAt: new Date('2026-01-01'),
+      });
+      await expect(service.verifyEmail('x')).rejects.toThrow(
+        /EMAIL_ALREADY_VERIFIED/,
+      );
     });
   });
 });

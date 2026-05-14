@@ -1,6 +1,9 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
+  Logger,
+  NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
@@ -12,12 +15,14 @@ import { RegisterDto } from './dto/register.dto';
 import { SystemRole } from './types/authenticated-user';
 
 const REFRESH_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+const EMAIL_VERIFICATION_TTL_MS = 24 * 60 * 60 * 1000; // 24h
 
 interface AccessTokenClaims {
   sub: string;
   email: string;
   role: SystemRole;
   isPremium: boolean;
+  emailVerified: boolean;
   jti: string;
 }
 
@@ -30,6 +35,7 @@ interface AuthSession {
     email: string;
     displayName: string;
     slug: string;
+    emailVerified: boolean;
   };
 }
 
@@ -42,6 +48,8 @@ interface IssueRefreshParams {
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwt: JwtService,
@@ -98,6 +106,7 @@ export class AuthService {
         passwordHash: true,
         role: true,
         isPremium: true,
+        emailVerifiedAt: true,
         displayName: true,
         slug: true,
       },
@@ -112,12 +121,14 @@ export class AuthService {
       throw new UnauthorizedException('INVALID_CREDENTIALS');
     }
 
+    const emailVerified = !!user.emailVerifiedAt;
     const family = randomUUID();
     const accessToken = await this.signAccessToken({
       sub: user.id,
       email: user.email,
       role: user.role as SystemRole,
       isPremium: user.isPremium,
+      emailVerified,
       jti: randomUUID(),
     });
     const refresh = await this.issueRefreshToken({
@@ -136,6 +147,7 @@ export class AuthService {
         email: user.email,
         displayName: user.displayName,
         slug: user.slug,
+        emailVerified,
       },
     };
   }
@@ -162,7 +174,6 @@ export class AuthService {
     }
 
     if (existing.revokedAt) {
-      // Reuse detected — revoke entire family (theft mitigation per PRD §12)
       await this.prisma.refreshToken.updateMany({
         where: { family: existing.family, revokedAt: null },
         data: { revokedAt: new Date() },
@@ -181,6 +192,7 @@ export class AuthService {
         email: true,
         role: true,
         isPremium: true,
+        emailVerifiedAt: true,
         displayName: true,
         slug: true,
       },
@@ -190,17 +202,18 @@ export class AuthService {
       throw new UnauthorizedException('USER_INACTIVE');
     }
 
-    // Rotate: revoke old, issue new in same family
     await this.prisma.refreshToken.update({
       where: { id: existing.id },
       data: { revokedAt: new Date() },
     });
 
+    const emailVerified = !!user.emailVerifiedAt;
     const accessToken = await this.signAccessToken({
       sub: user.id,
       email: user.email,
       role: user.role as SystemRole,
       isPremium: user.isPremium,
+      emailVerified,
       jti: randomUUID(),
     });
     const refresh = await this.issueRefreshToken({
@@ -219,6 +232,7 @@ export class AuthService {
         email: user.email,
         displayName: user.displayName,
         slug: user.slug,
+        emailVerified,
       },
     };
   }
@@ -230,6 +244,74 @@ export class AuthService {
       where: { tokenHash, revokedAt: null },
       data: { revokedAt: new Date() },
     });
+  }
+
+  /**
+   * Issues a verification token for the given user. In production this would
+   * dispatch an email via Resend/Postmark; in MVP it logs the token and
+   * returns it inline so dev tooling and tests can complete the flow.
+   */
+  async requestEmailVerification(userId: string) {
+    const user = await this.prisma.user.findFirst({
+      where: { id: userId, deletedAt: null },
+      select: { id: true, email: true, emailVerifiedAt: true },
+    });
+    if (!user) throw new NotFoundException('USER_NOT_FOUND');
+    if (user.emailVerifiedAt) {
+      throw new BadRequestException('EMAIL_ALREADY_VERIFIED');
+    }
+
+    const rawToken = randomBytes(32).toString('base64url');
+    const expiresAt = new Date(Date.now() + EMAIL_VERIFICATION_TTL_MS);
+
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: {
+        emailVerificationTokenHash: hashEmailToken(rawToken),
+        emailVerificationExpiresAt: expiresAt,
+      },
+    });
+
+    this.logger.log(
+      `[email-verification] dev-mode: token for ${user.email} = ${rawToken}`,
+    );
+
+    return { sent: true, expiresAt, devToken: rawToken };
+  }
+
+  async verifyEmail(rawToken: string) {
+    const tokenHash = hashEmailToken(rawToken);
+    const user = await this.prisma.user.findFirst({
+      where: {
+        emailVerificationTokenHash: tokenHash,
+        deletedAt: null,
+      },
+      select: {
+        id: true,
+        emailVerificationExpiresAt: true,
+        emailVerifiedAt: true,
+      },
+    });
+    if (!user) throw new BadRequestException('INVALID_TOKEN');
+    if (user.emailVerifiedAt) {
+      throw new BadRequestException('EMAIL_ALREADY_VERIFIED');
+    }
+    if (
+      !user.emailVerificationExpiresAt ||
+      user.emailVerificationExpiresAt.getTime() < Date.now()
+    ) {
+      throw new BadRequestException('TOKEN_EXPIRED');
+    }
+
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: {
+        emailVerifiedAt: new Date(),
+        emailVerificationTokenHash: null,
+        emailVerificationExpiresAt: null,
+      },
+    });
+    return { verified: true };
   }
 
   private signAccessToken(claims: AccessTokenClaims): Promise<string> {
@@ -254,5 +336,9 @@ export class AuthService {
 }
 
 function hashRefreshToken(raw: string): string {
+  return createHash('sha256').update(raw).digest('hex');
+}
+
+function hashEmailToken(raw: string): string {
   return createHash('sha256').update(raw).digest('hex');
 }

@@ -14,6 +14,7 @@ interface AccessTokenPayload {
   email: string;
   role: SystemRole;
   isPremium: boolean;
+  emailVerified: boolean;
   jti: string;
   iat: number;
   exp: number;
@@ -48,6 +49,7 @@ export class JwtAuthGuard implements CanActivate {
         email: payload.email,
         role: payload.role,
         isPremium: payload.isPremium,
+        emailVerified: payload.emailVerified,
         jti: payload.jti,
       };
       request.user = user;

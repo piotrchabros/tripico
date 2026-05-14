@@ -14,6 +14,7 @@ import { CurrentUser } from './decorators/current-user.decorator';
 import { Public } from './decorators/public.decorator';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
+import { VerifyEmailDto } from './dto/verify-email.dto';
 import { AuthService } from './auth.service';
 import { AuthenticatedUser } from './types/authenticated-user';
 
@@ -79,6 +80,19 @@ export class AuthController {
   @Get('me')
   me(@CurrentUser() user: AuthenticatedUser) {
     return user;
+  }
+
+  @Post('request-verification')
+  @HttpCode(HttpStatus.OK)
+  requestVerification(@CurrentUser() user: AuthenticatedUser) {
+    return this.authService.requestEmailVerification(user.id);
+  }
+
+  @Public()
+  @Post('verify-email')
+  @HttpCode(HttpStatus.OK)
+  verifyEmail(@Body() dto: VerifyEmailDto) {
+    return this.authService.verifyEmail(dto.token);
   }
 
   private setRefreshCookie(res: Response, token: string, expiresAt: Date) {

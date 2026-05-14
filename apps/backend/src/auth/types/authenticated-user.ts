@@ -5,5 +5,6 @@ export interface AuthenticatedUser {
   email: string;
   role: SystemRole;
   isPremium: boolean;
+  emailVerified: boolean;
   jti: string;
 }
