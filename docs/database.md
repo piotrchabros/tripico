@@ -28,15 +28,16 @@ Applied migrations (chronological):
 | `20260514015500_add_chat` | ChatChannel, Message (+ ChatType enum) |
 | `20260514015812_add_email_verification` | User.emailVerificationTokenHash + emailVerificationExpiresAt |
 | `20260514020454_add_notifications` | Notification (+ NotificationType enum) |
+| `20260514021054_add_password_reset` | User.passwordResetTokenHash + passwordResetExpiresAt |
 
 ## Models
 
 Grouped by domain. Soft-delete marker `(soft)` = has `deletedAt` column and queries must filter it.
 
 ### Users & auth
-- **User** `(soft)` — email/passwordHash/displayName/slug + role + premium denorm + email-verification fields
+- **User** `(soft)` — email/passwordHash/displayName/slug + role + premium denorm + email-verification fields + password-reset fields (`passwordResetTokenHash`, `passwordResetExpiresAt`)
 - **OAuthAccount** — provider linkage (one row per provider per user)
-- **RefreshToken** — SHA-256 hashed, family-based rotation, userAgent + ip
+- **RefreshToken** — SHA-256 hashed, family-based rotation, userAgent + ip. Bulk-revoked on successful password reset (all sessions invalidated)
 - **PushSubscription** — Web Push endpoint + keys (not used yet)
 
 ### Trips

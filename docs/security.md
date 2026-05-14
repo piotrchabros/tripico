@@ -15,10 +15,11 @@ The canonical security rules are in [AGENTS.md §8](../AGENTS.md) — Helmet, CO
 | Global JwtAuthGuard + @Public opt-out | ✅ implemented ([ADR-005](./decisions.md)) |
 | Email-existence non-disclosure on bad-login | ✅ (`INVALID_CREDENTIALS` for both unknown email + wrong password) |
 | RFC 7807 problem+json error envelope | ✅ via `HttpExceptionFilter` |
-| Email verification (+ gate on create-trip / join) | ✅ — but **delivery is mock** ([ADR-007](./decisions.md), see flag below) |
-| Helmet middleware | ❌ not added yet |
-| CORS allowlist (currently `cors: { origin: true }` on chat ns) | ❌ — global CORS off, chat ns reflects origin |
-| Rate limiting (`@nestjs/throttler` + Redis) | ❌ |
+| Email verification (+ gate on create-trip / join) | ✅ — **delivery is mock** (`devToken` env-gated behind `EMAIL_DEV_TOKENS=true`, default OFF — [ADR-007](./decisions.md)) |
+| Password reset with all-session revocation | ✅ — `forgot-password` / `reset-password` flow + bulk `revokedAt` on all active refresh tokens of that user |
+| Helmet middleware | ✅ — `app.use(helmet())` in `main.ts`, default header set |
+| CORS allowlist | ✅ — driven by `CORS_ALLOWED_ORIGINS` env (comma-separated), localhost dev fallback. Prod (Railway) set to the Vercel domain |
+| Rate limiting (`@nestjs/throttler` + Redis) | ❌ — see PRD §12 rate-limit matrix; needs Upstash + module wiring |
 | `@nestjs/config` + Zod schema validation on boot | ❌ — currently reads `process.env` directly |
 | Webhook signature verification | n/a — no webhooks yet |
 | Admin IP allowlist | n/a — no admin endpoints yet |
@@ -41,7 +42,8 @@ _To be filled in. Cover at minimum:_
 |---|---|---|
 | Membership approve / leave | Race on `Trip.currentMembers` increment / decrement | ✅ `$transaction` wrapping both updates |
 | Refresh cookie | Token theft via XSS / stolen cookie | ✅ httpOnly + Secure (prod) + family rotation + reuse revocation |
-| Email verification `devToken` | Token leaked in HTTP response in dev mode | ⚠️ **must gate behind env flag before any prod deploy** (see [ADR-007](./decisions.md)) |
+| Email verification `devToken` | Token leaked in HTTP response in dev mode | ✅ — `EMAIL_DEV_TOKENS=true` env required to surface, default OFF ([ADR-007](./decisions.md)). Same flag covers password-reset tokens. Must stay unset on production until real email provider lands. |
+| Password reset session revocation | Stolen refresh token survives a reset | ✅ — `resetPassword` runs `prisma.refreshToken.updateMany({ where: { userId, revokedAt: null }, data: { revokedAt: now } })` inside the same transaction as the hash update. |
 | JWT private key | Local PEM in `apps/backend/.env` (gitignored) | ✅ — but document handoff to production secret manager when deploying |
 | Chat broadcast | User outside room could receive others' messages | ✅ gateway joins `trip:<id>` room only after `canParticipate` check; `server.to(room).emit(...)` scopes |
 
@@ -65,9 +67,14 @@ openssl rsa -pubout -in private.pem -out public.pem
 Authoritative list of required env vars lives in `apps/backend/.env.example`. Every new env var added to code → update `.env.example` in the same PR.
 
 Currently documented:
-- `DATABASE_URL`
+- `DATABASE_URL` — Postgres connection string (Neon pooled URL in prod)
 - `JWT_PRIVATE_KEY` (multi-line PEM)
 - `JWT_PUBLIC_KEY` (multi-line PEM)
+- `CORS_ALLOWED_ORIGINS` — comma-separated origin allowlist for prod (Vercel domain)
+- `EMAIL_DEV_TOKENS` — when `"true"` exposes verification / password-reset tokens in API responses ([ADR-007](./decisions.md)). MUST stay unset in production
+- `POSTHOG_API_KEY` + `POSTHOG_HOST` — backend analytics ([ADR-010](./decisions.md)). Unset = silent no-op.
+
+Frontend production env is materialised at build time from Vercel project env vars via `scripts/inject-build-env.mjs` reading `environment.prod.template.ts` — see [ADR-010](./decisions.md) + [docs/deploy.md](./deploy.md).
 
 ## Incident history
 
