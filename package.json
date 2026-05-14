@@ -2,7 +2,11 @@
   "name": "@tripico/source",
   "version": "0.0.0",
   "license": "MIT",
-  "scripts": {},
+  "scripts": {
+    "prisma:generate": "cd apps/backend && prisma generate",
+    "prisma:migrate": "cd apps/backend && prisma migrate dev",
+    "prisma:studio": "cd apps/backend && prisma studio"
+  },
   "private": true,
   "dependencies": {
     "@angular/common": "~21.2.0",

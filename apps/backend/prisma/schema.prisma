@@ -9,3 +9,208 @@ generator client {
 datasource db {
   provider = "postgresql"
 }
+
+// =========================================================================
+// USERS & AUTH
+// =========================================================================
+
+enum UserRole {
+  USER
+  MODERATOR
+  ADMIN
+}
+
+enum VerificationLevel {
+  NONE
+  EMAIL
+  PHONE
+  IDENTITY
+}
+
+model User {
+  id                String              @id @default(uuid()) @db.Uuid
+  email             String              @unique
+  passwordHash      String?
+  displayName       String              @db.VarChar(100)
+  slug              String              @unique @db.VarChar(50)
+  avatarUrl         String?
+  bio               String?             @db.Text
+
+  emailVerifiedAt   DateTime?
+  verificationLevel VerificationLevel   @default(NONE)
+  isVerifiedBadge   Boolean             @default(false)
+
+  role              UserRole            @default(USER)
+
+  isPremium         Boolean             @default(false)
+  premiumUntil      DateTime?
+  stripeCustomerId  String?             @unique
+
+  reputationScore   Float               @default(0.0)
+
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  deletedAt         DateTime?
+
+  oauthAccounts     OAuthAccount[]
+  refreshTokens     RefreshToken[]
+  pushSubscriptions PushSubscription[]
+  organizedTrips    Trip[]              @relation("Organizer")
+  memberships       TripMembership[]
+
+  @@index([email])
+  @@index([slug])
+  @@index([deletedAt])
+}
+
+model OAuthAccount {
+  id                String   @id @default(uuid()) @db.Uuid
+  userId            String   @db.Uuid
+  provider          String
+  providerAccountId String
+
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt         DateTime @default(now())
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model RefreshToken {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @db.Uuid
+  tokenHash String    @unique
+  family    String    @db.Uuid
+  expiresAt DateTime
+  revokedAt DateTime?
+  userAgent String?
+  ip        String?
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+  @@index([family])
+  @@index([expiresAt])
+}
+
+model PushSubscription {
+  id         String   @id @default(uuid()) @db.Uuid
+  userId     String   @db.Uuid
+  endpoint   String   @unique
+  p256dhKey  String
+  authKey    String
+  userAgent  String?
+
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt  DateTime @default(now())
+  lastUsedAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+// =========================================================================
+// TRIPS
+// =========================================================================
+
+enum TransportType {
+  CAR
+  TRAIN
+  BUS
+  PLANE
+  BIKE
+  HIKING
+  MIXED
+  OTHER
+}
+
+enum TripStatus {
+  DRAFT
+  PUBLISHED
+  FULL
+  CANCELLED
+  COMPLETED
+  ARCHIVED
+}
+
+enum TripMemberRole {
+  ORGANIZER
+  MEMBER
+  PENDING
+}
+
+enum CurrencyCode {
+  PLN
+  EUR
+  USD
+}
+
+model Trip {
+  id                 String                   @id @default(uuid()) @db.Uuid
+  slug               String                   @unique
+  organizerId        String                   @db.Uuid
+
+  title              String                   @db.VarChar(200)
+  description        String                   @db.Text
+
+  destinationCountry String                   @db.VarChar(2)
+  destinationName   String                   @db.VarChar(200)
+  destinationLat    Float?
+  destinationLng    Float?
+  mapboxPlaceId     String?
+
+  startDate         DateTime                  @db.Date
+  endDate           DateTime                  @db.Date
+  durationDays      Int
+
+  transport         TransportType
+  pricePerPerson    Decimal                   @db.Decimal(10, 2)
+  currency          CurrencyCode              @default(PLN)
+  maxMembers        Int
+  currentMembers    Int                       @default(1)
+
+  coverImageUrl     String?
+  galleryUrls       String[]
+
+  searchVector      Unsupported("tsvector")?
+
+  status            TripStatus                @default(DRAFT)
+  publishedAt       DateTime?
+
+  createdAt         DateTime                  @default(now())
+  updatedAt         DateTime                  @updatedAt
+  deletedAt         DateTime?
+
+  organizer         User                      @relation("Organizer", fields: [organizerId], references: [id], onDelete: Restrict)
+  memberships       TripMembership[]
+
+  @@index([status, deletedAt])
+  @@index([organizerId])
+  @@index([startDate])
+  @@index([destinationCountry, startDate])
+  @@index([transport, pricePerPerson])
+  @@index([slug])
+}
+
+model TripMembership {
+  id             String         @id @default(uuid()) @db.Uuid
+  tripId         String         @db.Uuid
+  userId         String         @db.Uuid
+  role           TripMemberRole
+  joinedAt       DateTime?
+  leftAt         DateTime?
+  requestMessage String?        @db.Text
+
+  trip           Trip           @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  @@unique([tripId, userId])
+  @@index([tripId, role])
+  @@index([userId])
+}

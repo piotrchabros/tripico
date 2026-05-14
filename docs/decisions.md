@@ -24,6 +24,12 @@ Append-only. Never delete entries. Newest at the bottom of each section.
 **Rationale**: Standard convention recognized by both Claude Code and Codex CLI. CLAUDE.md is reserved for Claude-specific workflow (Dawid persona, skill triggers).
 **Trade-off**: Cursor's `.mdc` format with `globs`/`alwaysApply` not used; need to manually re-add for Cursor support.
 
+### ADR-004: Prisma 7 with PrismaPg driver adapter (2026-05)
+
+**Decision**: Use Prisma 7's new `prisma-client` generator (TS-native client generated to `src/generated/prisma/`) + `@prisma/adapter-pg` driver adapter wrapping `pg`. `PrismaService` constructs `new PrismaPg({ connectionString: process.env.DATABASE_URL })` and passes it to `super({ adapter })`. Schema datasource has no `url` field; CLI reads `DATABASE_URL` via `prisma.config.ts` + dotenv.
+**Rationale**: Prisma 7 retired the Rust query engine. The pure-JS driver adapter path is now mandatory for new projects — there is no Prisma-5/6-style "just put url in schema and it works" route. PrismaPg + pg is the official PostgreSQL recipe per Prisma's NestJS guide.
+**Trade-off**: One extra runtime dependency (`pg`) compared to Rust-engine Prisma. Slightly more constructor wiring in `PrismaService`. Connection pooling now configured on `pg` side, not Prisma. Existing Prisma docs/tutorials assuming `import { PrismaClient } from '@prisma/client'` no longer apply — must import from generated path.
+
 ---
 
 ## Bug Log
