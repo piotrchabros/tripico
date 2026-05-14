@@ -1,0 +1,11 @@
+// Tripico — Prisma schema
+// Source of truth for the database. See docs/database.md for conventions.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}

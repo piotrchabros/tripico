@@ -32,8 +32,8 @@ You are an engineering assistant for **Tripico**, a community-driven trip-findin
 
 ## 1. Stack — non-negotiable
 
-- **Backend:** NestJS 10+ (TypeScript strict), Prisma 5+, PostgreSQL 16 (Neon), Redis (Upstash), BullMQ, Socket.io + `@socket.io/redis-adapter`, Passport.js, Pino.
-- **Frontend:** Angular 18+ (signals, standalone components, control flow `@if`/`@for`/`@switch`), Angular SSR (Universal + Hydration), Tailwind CSS, Angular CDK, Mapbox GL JS, socket.io-client.
+- **Backend:** NestJS 11+ (TypeScript strict), Prisma 7+ with `@prisma/adapter-pg` driver adapter (Rust engine retired in Prisma 7), PostgreSQL 16 (Neon), Redis (Upstash), BullMQ, Socket.io + `@socket.io/redis-adapter`, Passport.js, Pino.
+- **Frontend:** Angular 21+ (signals, standalone components, control flow `@if`/`@for`/`@switch`), Angular SSR (Universal + Hydration), Tailwind CSS, Angular CDK, Mapbox GL JS, socket.io-client.
 - **Auth:** Custom Passport-based, JWT RS256 (access 15min + refresh 7d httpOnly cookie with rotation), Argon2id passwords.
 - **Storage:** Cloudflare R2 (direct upload via presigned URLs) + Cloudflare Images (image variants) + Cloudflare Stream (video).
 - **AI:** Anthropic Claude Haiku (`claude-haiku-4-5-20251001`) for categorization; OpenAI `text-embedding-3-small` for embeddings (pgvector).
@@ -89,7 +89,7 @@ You are an engineering assistant for **Tripico**, a community-driven trip-findin
 
 ### Background jobs (BullMQ)
 - One queue per domain action: `media-processing`, `nsfw-check`, `ai-classify`, `ranking-recompute`, `push-notifications`, `email`, `embeddings`.
-- Workers in `apps/api/src/workers/` — each as `*.worker.ts` registered via `BullModule.registerQueue`.
+- Workers in `apps/backend/src/workers/` — each as `*.worker.ts` registered via `BullModule.registerQueue`.
 - Job payloads are typed with explicit `JobData` interfaces. **Never `Record<string, unknown>`**.
 - Workers must be **idempotent** — same job replayed must produce same result (use existence checks before mutations).
 - Retry strategy: `attempts: 3, backoff: { type: 'exponential', delay: 5000 }`. Configure per-queue based on cost (e.g. AI jobs cost money — limit retries).
@@ -106,7 +106,8 @@ You are an engineering assistant for **Tripico**, a community-driven trip-findin
 
 ## 4. Prisma rules
 
-- Single source of truth: `apps/api/prisma/schema.prisma`. Modify schema → run `npx prisma migrate dev --name descriptive_name` → commit both schema + migration.
+- Single source of truth: `apps/backend/prisma/schema.prisma`. Modify schema → run `npx prisma migrate dev --name descriptive_name` → commit both schema + migration.
+- **Prisma 7 setup**: schema uses `prisma-client` generator with `output = "../src/generated/prisma"` (import `PrismaClient` from `'../generated/prisma/client'`, NOT from `@prisma/client`). Datasource block has NO `url` field — connection URL flows to CLI via `prisma.config.ts` (dotenv) and to runtime via `new PrismaPg({ connectionString })` adapter in `PrismaService` constructor.
 - **Migrations must be backward-compatible** for 1 deploy cycle (see PRD §15 migration policy). For breaking changes: 2-step or 3-step migrations split across PRs.
 - Use `select` and `include` explicitly — never fetch all columns when you need 3.
 - Use Prisma transactions (`prisma.$transaction`) for any operation modifying ≥2 tables atomically.

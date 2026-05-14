@@ -48,3 +48,8 @@ Thumbs.db
 __screenshots__/
 
 .nx/polygraph
+# Environment files (secrets)
+.env
+.env.local
+.env.*.local
+!.env.example
