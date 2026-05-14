@@ -105,6 +105,15 @@ import { TripsApiService } from '../core/trips-api.service';
               </div>
               <div class="p-4">
                 <h2 class="font-semibold mb-1 line-clamp-1">{{ trip.title }}</h2>
+                @if (trip.categories?.length) {
+                  <div class="flex flex-wrap gap-1 mb-2">
+                    @for (entry of trip.categories.slice(0, 3); track entry.category.id) {
+                      <span class="text-xs px-2 py-0.5 rounded-full bg-teal-50 text-teal-700">
+                        {{ entry.category.iconEmoji }} {{ entry.category.labelPl }}
+                      </span>
+                    }
+                  </div>
+                }
                 <p class="text-sm text-stone-500 mb-3 line-clamp-1">
                   {{ trip.destinationName }}
                 </p>

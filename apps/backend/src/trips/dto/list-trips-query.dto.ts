@@ -60,6 +60,11 @@ export class ListTripsQueryDto {
   search?: string;
 
   @IsOptional()
+  @IsString()
+  @MaxLength(50)
+  category?: string;
+
+  @IsOptional()
   @Type(() => Number)
   @IsInt()
   @Min(1)

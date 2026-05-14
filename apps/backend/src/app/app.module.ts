@@ -5,6 +5,7 @@ import { AppService } from './app.service';
 import { AIModule } from '../ai/ai.module';
 import { AuthModule } from '../auth/auth.module';
 import { BoardModule } from '../board/board.module';
+import { CategoriesModule } from '../categories/categories.module';
 import { ChatModule } from '../chat/chat.module';
 import { EmailModule } from '../email/email.module';
 import { HealthModule } from '../health/health.module';
@@ -21,6 +22,7 @@ import { TripsModule } from '../trips/trips.module';
     PostHogModule,
     EmailModule,
     AIModule,
+    CategoriesModule,
     AuthModule,
     NotificationsModule,
     TripsModule,

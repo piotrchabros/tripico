@@ -38,6 +38,19 @@ const TRIP_SUMMARY_SELECT = {
   publishedAt: true,
   organizerId: true,
   createdAt: true,
+  categories: {
+    select: {
+      confidence: true,
+      category: {
+        select: {
+          id: true,
+          slug: true,
+          labelPl: true,
+          iconEmoji: true,
+        },
+      },
+    },
+  },
 } as const;
 
 @Injectable()
@@ -130,6 +143,11 @@ export class TripsService {
         { title: { contains: term, mode: 'insensitive' } },
         { destinationName: { contains: term, mode: 'insensitive' } },
       ];
+    }
+    if (query.category) {
+      where['categories'] = {
+        some: { category: { slug: query.category } },
+      };
     }
 
     return where;

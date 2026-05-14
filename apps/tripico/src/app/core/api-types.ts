@@ -43,6 +43,19 @@ export type TransportType =
 
 export type CurrencyCode = 'PLN' | 'EUR' | 'USD';
 
+export interface CategoryRef {
+  id: string;
+  slug: string;
+  labelPl: string;
+  description?: string | null;
+  iconEmoji: string | null;
+}
+
+export interface TripCategoryEntry {
+  confidence: number;
+  category: CategoryRef;
+}
+
 export interface TripSummary {
   id: string;
   slug: string;
@@ -66,6 +79,7 @@ export interface TripSummary {
   publishedAt: string | null;
   organizerId: string;
   createdAt: string;
+  categories: TripCategoryEntry[];
 }
 
 export interface ListEnvelope<T> {
@@ -82,6 +96,7 @@ export interface TripsListQuery {
   minPrice?: number;
   maxPrice?: number;
   search?: string;
+  category?: string;
   limit?: number;
 }
 

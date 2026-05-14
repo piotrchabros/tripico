@@ -92,6 +92,19 @@ import { TripChatComponent } from '../components/trip-chat.component';
           </div>
         </dl>
 
+        @if (t.categories?.length) {
+          <div class="flex flex-wrap gap-2 mb-6">
+            @for (entry of t.categories; track entry.category.id) {
+              <span
+                class="text-sm px-3 py-1 rounded-full bg-teal-50 text-teal-700 border border-teal-100"
+                [title]="'Pewność: ' + (entry.confidence * 100 | number: '1.0-0') + '%'"
+              >
+                {{ entry.category.iconEmoji }} {{ entry.category.labelPl }}
+              </span>
+            }
+          </div>
+        }
+
         @if (authState.isAuthenticated()) {
           <section class="bg-white rounded-2xl p-6 mb-6">
             @switch (myRole()) {

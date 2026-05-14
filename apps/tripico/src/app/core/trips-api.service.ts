@@ -2,6 +2,7 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import {
+  CategoryRef,
   CreateTripPayload,
   ListEnvelope,
   Membership,
@@ -40,6 +41,12 @@ export class TripsApiService {
 
   getBySlug(slug: string): Observable<TripSummary> {
     return this.http.get<TripSummary>(`${this.base}/${slug}`);
+  }
+
+  listCategories(): Observable<CategoryRef[]> {
+    return this.http.get<CategoryRef[]>(
+      `${APP_ENVIRONMENT.apiBaseUrl}/categories`,
+    );
   }
 
   create(payload: CreateTripPayload): Observable<TripSummary> {
