@@ -22,7 +22,7 @@ NPM_CONFIG_PRODUCTION = "false"
 NODE_ENV = "production"
 
 [phases.build]
-cmds = ["npm run build:backend"]
+cmds = ["npm run prisma:generate", "npm run build:backend"]
 cacheDirectories = [".nx/cache", "node_modules/.cache"]
 
 [start]
