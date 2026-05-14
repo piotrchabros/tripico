@@ -9,6 +9,7 @@ import {
   Res,
   UnauthorizedException,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { Request, Response } from 'express';
 import { CurrentUser } from './decorators/current-user.decorator';
 import { Public } from './decorators/public.decorator';
@@ -28,6 +29,7 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Public()
+  @Throttle({ register: { limit: 3, ttl: 60 * 60_000 } })
   @Post('register')
   @HttpCode(HttpStatus.CREATED)
   register(@Body() dto: RegisterDto) {
@@ -35,6 +37,7 @@ export class AuthController {
   }
 
   @Public()
+  @Throttle({ login: { limit: 5, ttl: 15 * 60_000 } })
   @Post('login')
   @HttpCode(HttpStatus.OK)
   async login(
@@ -51,6 +54,7 @@ export class AuthController {
   }
 
   @Public()
+  @Throttle({ refresh: { limit: 30, ttl: 60_000 } })
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
   async refresh(
@@ -91,6 +95,7 @@ export class AuthController {
   }
 
   @Public()
+  @Throttle({ 'verify-email': { limit: 10, ttl: 60 * 60_000 } })
   @Post('verify-email')
   @HttpCode(HttpStatus.OK)
   verifyEmail(@Body() dto: VerifyEmailDto) {
@@ -98,6 +103,7 @@ export class AuthController {
   }
 
   @Public()
+  @Throttle({ 'forgot-password': { limit: 3, ttl: 60 * 60_000 } })
   @Post('forgot-password')
   @HttpCode(HttpStatus.OK)
   forgotPassword(@Body() dto: ForgotPasswordDto) {
@@ -105,6 +111,7 @@ export class AuthController {
   }
 
   @Public()
+  @Throttle({ 'forgot-password': { limit: 3, ttl: 60 * 60_000 } })
   @Post('reset-password')
   @HttpCode(HttpStatus.OK)
   resetPassword(@Body() dto: ResetPasswordDto) {
