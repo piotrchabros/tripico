@@ -1,0 +1,22 @@
+# Custom nixpacks build pipeline for Railway.
+#
+# Why this file exists: by default Railway's node provider mounts
+# /app/node_modules/.cache as a build-time cache volume, but `npm ci`
+# wipes node_modules clean before installing — and rmdir on a bind
+# mount fails with EBUSY. Disabling the cache directories on the
+# install phase lets `npm ci` complete; we keep cache on the build
+# phase where it actually helps webpack.
+
+[phases.setup]
+nixPkgs = ["nodejs_24", "npm-9_x"]
+
+[phases.install]
+cmds = ["npm ci --prefer-offline --no-audit --no-fund"]
+cacheDirectories = []
+
+[phases.build]
+cmds = ["npm run build:backend"]
+cacheDirectories = [".nx/cache", "node_modules/.cache"]
+
+[start]
+cmd = "npm run backend:release && npm run backend:start"
