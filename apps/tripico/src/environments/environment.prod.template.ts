@@ -13,4 +13,5 @@ export const environment = {
   posthogKey: '__POSTHOG_API_KEY__',
   posthogHost: 'https://eu.i.posthog.com',
   sentryDsn: '__SENTRY_DSN_FRONTEND__',
+  mapboxPublicToken: '__MAPBOX_PUBLIC_TOKEN__',
 };

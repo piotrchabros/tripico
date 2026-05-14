@@ -35,6 +35,7 @@ const outputPath = join(
 const TOKENS = {
   __POSTHOG_API_KEY__: process.env.POSTHOG_API_KEY ?? '',
   __SENTRY_DSN_FRONTEND__: process.env.SENTRY_DSN_FRONTEND ?? '',
+  __MAPBOX_PUBLIC_TOKEN__: process.env.MAPBOX_PUBLIC_TOKEN ?? '',
 };
 
 let content = readFileSync(templatePath, 'utf-8');

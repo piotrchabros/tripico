@@ -13,4 +13,7 @@ export const environment = {
   posthogHost: 'https://eu.i.posthog.com',
   // Empty disables Sentry locally — matches PostHog pattern.
   sentryDsn: '',
+  // Mapbox public access token (pk.ey...). Empty = map block hidden
+  // on trip detail. Drop a token here for local map preview.
+  mapboxPublicToken: '',
 };

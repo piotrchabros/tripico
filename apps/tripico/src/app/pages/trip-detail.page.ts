@@ -10,6 +10,7 @@ import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { forkJoin } from 'rxjs';
 import { Membership, TripSummary } from '../core/api-types';
+import { APP_ENVIRONMENT } from '../core/environment';
 import { AuthStateService } from '../core/auth-state.service';
 import { TripsApiService } from '../core/trips-api.service';
 import { TripChatComponent } from '../components/trip-chat.component';
@@ -103,6 +104,22 @@ import { TripChatComponent } from '../components/trip-chat.component';
               </span>
             }
           </div>
+        }
+
+        @if (mapImageUrl(t); as mapUrl) {
+          <a
+            [href]="'https://www.google.com/maps/search/?api=1&query=' + t.destinationLat + ',' + t.destinationLng"
+            target="_blank"
+            rel="noopener"
+            class="block rounded-2xl overflow-hidden mb-6 border border-stone-200 hover:shadow-md transition"
+          >
+            <img
+              [src]="mapUrl"
+              [alt]="'Mapa: ' + t.destinationName"
+              class="w-full h-auto"
+              loading="lazy"
+            />
+          </a>
         }
 
         @if (authState.isAuthenticated()) {
@@ -329,6 +346,29 @@ export class TripDetailPage {
 
   protected statusBadgeClass(status: TripSummary['status']): string {
     return STATUS_BADGE[status] ?? 'bg-stone-100 text-stone-700';
+  }
+
+  /**
+   * Build a Mapbox Static Images API URL for the trip's destination.
+   * Returns null when coordinates are missing OR the Mapbox token is
+   * unset (so the block disappears entirely in dev).
+   */
+  protected mapImageUrl(t: TripSummary): string | null {
+    const env = APP_ENVIRONMENT as { mapboxPublicToken?: string };
+    const token = env.mapboxPublicToken;
+    if (!token || token.startsWith('__')) return null;
+    if (t.destinationLat == null || t.destinationLng == null) return null;
+    const lng = t.destinationLng;
+    const lat = t.destinationLat;
+    const zoom = 9;
+    const width = 1024;
+    const height = 360;
+    const marker = `pin-l+0d9488(${lng},${lat})`;
+    return (
+      `https://api.mapbox.com/styles/v1/mapbox/outdoors-v12/static/` +
+      `${marker}/${lng},${lat},${zoom},0/${width}x${height}@2x` +
+      `?access_token=${token}`
+    );
   }
 
   private load(): void {
