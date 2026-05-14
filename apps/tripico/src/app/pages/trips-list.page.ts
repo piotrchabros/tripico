@@ -47,6 +47,25 @@ import { TripsApiService } from '../core/trips-api.service';
     </header>
 
     <main class="max-w-5xl mx-auto px-4 py-8">
+      @if (
+        authState.isAuthenticated() &&
+        authState.user()?.emailVerified === false
+      ) {
+        <div class="mb-6 bg-amber-50 border border-amber-200 rounded-lg p-4 flex items-start justify-between gap-3">
+          <div>
+            <p class="font-medium text-amber-900">Potwierdź adres email</p>
+            <p class="text-sm text-amber-800 mt-0.5">
+              Tworzenie wycieczek i dołączanie wymaga zweryfikowanego konta.
+            </p>
+          </div>
+          <a
+            routerLink="/verify-email"
+            class="shrink-0 text-sm bg-amber-600 text-white px-3 py-1.5 rounded-lg hover:bg-amber-700"
+          >
+            Potwierdź teraz
+          </a>
+        </div>
+      }
       <h1 class="text-3xl font-bold mb-2">Wycieczki</h1>
       <p class="text-stone-600 mb-8">
         Odkrywaj wyprawy organizowane przez społeczność.

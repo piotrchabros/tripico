@@ -41,4 +41,17 @@ export class AuthApiService {
       .post<void>(`${this.base}/logout`, null, { withCredentials: true })
       .pipe(tap(() => this.state.clear()));
   }
+
+  requestVerification(): Observable<{ sent: boolean; expiresAt?: string; devToken?: string }> {
+    return this.http.post<{ sent: boolean; expiresAt?: string; devToken?: string }>(
+      `${this.base}/request-verification`,
+      null,
+    );
+  }
+
+  verifyEmail(token: string): Observable<{ verified: boolean }> {
+    return this.http.post<{ verified: boolean }>(`${this.base}/verify-email`, {
+      token,
+    });
+  }
 }

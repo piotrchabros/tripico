@@ -25,6 +25,11 @@ export const appRoutes: Route[] = [
       import('./pages/create-trip.page').then((m) => m.CreateTripPage),
   },
   {
+    path: 'verify-email',
+    loadComponent: () =>
+      import('./pages/verify-email.page').then((m) => m.VerifyEmailPage),
+  },
+  {
     path: 'wycieczka/:slug',
     loadComponent: () =>
       import('./pages/trip-detail.page').then((m) => m.TripDetailPage),
