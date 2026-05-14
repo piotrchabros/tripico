@@ -11,8 +11,15 @@
 nixPkgs = ["nodejs_24", "npm-9_x"]
 
 [phases.install]
-cmds = ["npm ci --prefer-offline --no-audit --no-fund"]
+cmds = ["npm ci --include=dev --prefer-offline --no-audit --no-fund"]
 cacheDirectories = []
+
+[variables]
+# Override the legacy `npm_config_production=true` that Railway/nixpacks
+# sets by default, which would prune nx + the rest of devDependencies
+# before the build phase ever runs.
+NPM_CONFIG_PRODUCTION = "false"
+NODE_ENV = "production"
 
 [phases.build]
 cmds = ["npm run build:backend"]
