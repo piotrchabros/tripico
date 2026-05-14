@@ -16,6 +16,12 @@ import { TripsApiService } from '../core/trips-api.service';
         <a routerLink="/" class="text-xl font-semibold text-teal-700">Tripico</a>
         <nav class="flex items-center gap-4 text-sm">
           @if (authState.isAuthenticated()) {
+            <a
+              routerLink="/create"
+              class="bg-teal-600 text-white px-3 py-1.5 rounded-lg hover:bg-teal-700"
+            >
+              + Nowa wycieczka
+            </a>
             <span class="text-stone-600">
               {{ authState.user()?.displayName }}
             </span>

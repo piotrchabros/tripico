@@ -84,3 +84,39 @@ export interface TripsListQuery {
   search?: string;
   limit?: number;
 }
+
+export interface CreateTripPayload {
+  title: string;
+  description: string;
+  destinationCountry: string;
+  destinationName: string;
+  destinationLat?: number;
+  destinationLng?: number;
+  startDate: string;
+  endDate: string;
+  transport: TransportType;
+  pricePerPerson: number;
+  currency?: CurrencyCode;
+  maxMembers: number;
+  coverImageUrl?: string;
+}
+
+export type TripMemberRole = 'ORGANIZER' | 'MEMBER' | 'PENDING';
+
+export interface Membership {
+  id: string;
+  tripId: string;
+  userId: string;
+  role: TripMemberRole;
+  joinedAt: string | null;
+  leftAt: string | null;
+  requestMessage: string | null;
+  createdAt: string;
+  user: {
+    id: string;
+    displayName: string;
+    slug: string;
+    avatarUrl: string | null;
+    isVerifiedBadge: boolean;
+  };
+}

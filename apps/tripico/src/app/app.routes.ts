@@ -1,4 +1,5 @@
 import { Route } from '@angular/router';
+import { authMatchGuard } from './core/auth.guard';
 
 export const appRoutes: Route[] = [
   {
@@ -16,6 +17,12 @@ export const appRoutes: Route[] = [
     path: 'register',
     loadComponent: () =>
       import('./pages/register.page').then((m) => m.RegisterPage),
+  },
+  {
+    path: 'create',
+    canMatch: [authMatchGuard],
+    loadComponent: () =>
+      import('./pages/create-trip.page').then((m) => m.CreateTripPage),
   },
   {
     path: 'wycieczka/:slug',
