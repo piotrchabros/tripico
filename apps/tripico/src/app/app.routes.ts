@@ -41,6 +41,11 @@ export const appRoutes: Route[] = [
       import('./pages/trip-detail.page').then((m) => m.TripDetailPage),
   },
   {
+    path: 'u/:slug',
+    loadComponent: () =>
+      import('./pages/user-profile.page').then((m) => m.UserProfilePage),
+  },
+  {
     path: '**',
     redirectTo: '',
   },

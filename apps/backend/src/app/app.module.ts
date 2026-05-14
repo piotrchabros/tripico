@@ -14,6 +14,7 @@ import { PostHogModule } from '../posthog/posthog.module';
 import { PrismaModule } from '../prisma/prisma.module';
 import { buildLoggerConfig } from '../shared/logger/logger.config';
 import { TripsModule } from '../trips/trips.module';
+import { UsersModule } from '../users/users.module';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { TripsModule } from '../trips/trips.module';
     TripsModule,
     BoardModule,
     ChatModule,
+    UsersModule,
     HealthModule,
   ],
   controllers: [AppController],
