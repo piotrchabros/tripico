@@ -17,7 +17,7 @@
     "backend:start": "node dist/apps/backend/main.js",
     "backend:release": "npm run prisma:deploy && npm run prisma:generate",
     "build:backend": "nx build backend --skip-nx-cache",
-    "build:frontend": "nx build tripico --skip-nx-cache"
+    "build:frontend": "node scripts/inject-build-env.mjs && nx build tripico --skip-nx-cache"
   },
   "private": true,
   "dependencies": {

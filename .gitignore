@@ -53,3 +53,7 @@ __screenshots__/
 .env.local
 .env.*.local
 !.env.example
+
+# Generated Angular prod environment — values injected by
+# scripts/inject-build-env.mjs from build-time env vars
+apps/tripico/src/environments/environment.prod.ts
