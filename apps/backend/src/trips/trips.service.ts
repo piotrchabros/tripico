@@ -85,14 +85,48 @@ export class TripsService {
     const limit = query.limit ?? 20;
     const status: TripStatus = query.status ?? 'PUBLISHED';
 
+    const where = this.buildDiscoveryWhere(query, status);
+
     const data = await this.prisma.trip.findMany({
-      where: { status, deletedAt: null },
+      where,
       orderBy: { createdAt: 'desc' },
       take: limit,
       select: TRIP_SUMMARY_SELECT,
     });
 
     return { data, meta: { hasMore: data.length === limit } };
+  }
+
+  private buildDiscoveryWhere(query: ListTripsQueryDto, status: TripStatus) {
+    const where: Record<string, unknown> = { status, deletedAt: null };
+
+    if (query.destinationCountry) {
+      where['destinationCountry'] = query.destinationCountry.toUpperCase();
+    }
+    if (query.transport) {
+      where['transport'] = query.transport;
+    }
+    if (query.startDateFrom || query.startDateTo) {
+      const range: Record<string, Date> = {};
+      if (query.startDateFrom) range['gte'] = query.startDateFrom;
+      if (query.startDateTo) range['lte'] = query.startDateTo;
+      where['startDate'] = range;
+    }
+    if (query.minPrice !== undefined || query.maxPrice !== undefined) {
+      const range: Record<string, number> = {};
+      if (query.minPrice !== undefined) range['gte'] = query.minPrice;
+      if (query.maxPrice !== undefined) range['lte'] = query.maxPrice;
+      where['pricePerPerson'] = range;
+    }
+    if (query.search) {
+      const term = query.search.trim();
+      where['OR'] = [
+        { title: { contains: term, mode: 'insensitive' } },
+        { destinationName: { contains: term, mode: 'insensitive' } },
+      ];
+    }
+
+    return where;
   }
 
   async listMine(organizerId: string, query: ListTripsQueryDto) {

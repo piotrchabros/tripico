@@ -150,6 +150,69 @@ describe('TripsService', () => {
       const result = await service.list({});
       expect(result.meta.hasMore).toBe(true);
     });
+
+    it('applies destinationCountry filter (uppercased)', async () => {
+      prisma.trip.findMany.mockResolvedValue([]);
+      await service.list({ destinationCountry: 'pl' });
+      expect(prisma.trip.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ destinationCountry: 'PL' }),
+        }),
+      );
+    });
+
+    it('applies transport filter', async () => {
+      prisma.trip.findMany.mockResolvedValue([]);
+      await service.list({ transport: 'TRAIN' });
+      expect(prisma.trip.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ transport: 'TRAIN' }),
+        }),
+      );
+    });
+
+    it('applies startDate range when both bounds provided', async () => {
+      prisma.trip.findMany.mockResolvedValue([]);
+      const from = new Date('2026-07-01');
+      const to = new Date('2026-07-31');
+      await service.list({ startDateFrom: from, startDateTo: to });
+      expect(prisma.trip.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            startDate: { gte: from, lte: to },
+          }),
+        }),
+      );
+    });
+
+    it('applies price range', async () => {
+      prisma.trip.findMany.mockResolvedValue([]);
+      await service.list({ minPrice: 100, maxPrice: 2000 });
+      expect(prisma.trip.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            pricePerPerson: { gte: 100, lte: 2000 },
+          }),
+        }),
+      );
+    });
+
+    it('applies search across title and destinationName (case-insensitive)', async () => {
+      prisma.trip.findMany.mockResolvedValue([]);
+      await service.list({ search: 'Bieszczady' });
+      expect(prisma.trip.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            OR: [
+              { title: { contains: 'Bieszczady', mode: 'insensitive' } },
+              {
+                destinationName: { contains: 'Bieszczady', mode: 'insensitive' },
+              },
+            ],
+          }),
+        }),
+      );
+    });
   });
 
   describe('listMine', () => {
