@@ -1,0 +1,12 @@
+export const NOTIFICATION_TYPES = [
+  'JOIN_REQUEST_RECEIVED',
+  'JOIN_REQUEST_APPROVED',
+  'JOIN_REQUEST_REJECTED',
+  'MEMBER_LEFT',
+  'TRIP_CANCELLED',
+  'TRIP_UPDATED',
+  'CHAT_MENTION',
+  'BOARD_POST',
+  'GENERIC',
+] as const;
+export type NotificationType = (typeof NOTIFICATION_TYPES)[number];

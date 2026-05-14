@@ -5,13 +5,17 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { NotificationsService } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { TripMemberRole } from '../shared/constants/enums';
 import { JoinTripDto } from './dto/join-trip.dto';
 
 @Injectable()
 export class MembershipsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly notifications: NotificationsService,
+  ) {}
 
   async requestJoin(tripId: string, userId: string, dto: JoinTripDto) {
     const trip = await this.prisma.trip.findFirst({
@@ -57,7 +61,7 @@ export class MembershipsService {
       });
     }
 
-    return this.prisma.tripMembership.create({
+    const membership = await this.prisma.tripMembership.create({
       data: {
         trip: { connect: { id: tripId } },
         user: { connect: { id: userId } },
@@ -66,6 +70,14 @@ export class MembershipsService {
       },
       select: membershipPublicSelect,
     });
+
+    await this.notifications.create(trip.organizerId, 'JOIN_REQUEST_RECEIVED', {
+      tripId,
+      membershipId: membership.id,
+      requesterId: userId,
+    });
+
+    return membership;
   }
 
   async approve(membershipId: string, callerId: string) {
@@ -86,12 +98,12 @@ export class MembershipsService {
       throw new BadRequestException('TRIP_FULL');
     }
 
-    return this.prisma.$transaction(async (tx) => {
+    const updated = await this.prisma.$transaction(async (tx) => {
       const newCount = membership.trip.currentMembers + 1;
       const nextStatus =
         newCount >= membership.trip.maxMembers ? 'FULL' : 'PUBLISHED';
 
-      const updated = await tx.tripMembership.update({
+      const m = await tx.tripMembership.update({
         where: { id: membership.id },
         data: { role: 'MEMBER', joinedAt: new Date() },
         select: membershipPublicSelect,
@@ -102,8 +114,15 @@ export class MembershipsService {
         data: { currentMembers: newCount, status: nextStatus },
       });
 
-      return updated;
+      return m;
     });
+
+    await this.notifications.create(updated.userId, 'JOIN_REQUEST_APPROVED', {
+      tripId: membership.trip.id,
+      membershipId: membership.id,
+    });
+
+    return updated;
   }
 
   async reject(membershipId: string, callerId: string) {
@@ -114,9 +133,18 @@ export class MembershipsService {
     if (membership.role !== 'PENDING') {
       throw new BadRequestException('NOT_PENDING');
     }
+    // capture userId before delete cascades the membership row
+    const targetUserId = await this.prisma.tripMembership
+      .findUnique({ where: { id: membership.id }, select: { userId: true } })
+      .then((m) => m?.userId);
     await this.prisma.tripMembership.delete({
       where: { id: membership.id },
     });
+    if (targetUserId) {
+      await this.notifications.create(targetUserId, 'JOIN_REQUEST_REJECTED', {
+        tripId: membership.trip.id,
+      });
+    }
   }
 
   async leave(tripId: string, userId: string) {

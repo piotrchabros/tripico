@@ -10,6 +10,11 @@ jest.mock('../prisma/prisma.service', () => ({
   PrismaService: class PrismaServiceStub {},
 }));
 
+jest.mock('../notifications/notifications.service', () => ({
+  NotificationsService: class NotificationsServiceStub {},
+}));
+
+import { NotificationsService } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { MembershipsService } from './memberships.service';
 
@@ -26,6 +31,7 @@ describe('MembershipsService', () => {
     };
     $transaction: jest.Mock;
   };
+  let notifications: { create: jest.Mock };
 
   beforeEach(async () => {
     prisma = {
@@ -42,10 +48,12 @@ describe('MembershipsService', () => {
       ),
     };
 
+    notifications = { create: jest.fn().mockResolvedValue({}) };
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         MembershipsService,
         { provide: PrismaService, useValue: prisma },
+        { provide: NotificationsService, useValue: notifications },
       ],
     }).compile();
     service = module.get(MembershipsService);
