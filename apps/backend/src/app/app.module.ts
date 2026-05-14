@@ -5,6 +5,7 @@ import { AppService } from './app.service';
 import { AuthModule } from '../auth/auth.module';
 import { BoardModule } from '../board/board.module';
 import { ChatModule } from '../chat/chat.module';
+import { EmailModule } from '../email/email.module';
 import { HealthModule } from '../health/health.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { PostHogModule } from '../posthog/posthog.module';
@@ -17,6 +18,7 @@ import { TripsModule } from '../trips/trips.module';
     LoggerModule.forRoot(buildLoggerConfig()),
     PrismaModule,
     PostHogModule,
+    EmailModule,
     AuthModule,
     NotificationsModule,
     TripsModule,

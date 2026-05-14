@@ -8,12 +8,17 @@ jest.mock('../prisma/prisma.service', () => ({
   PrismaService: class PrismaServiceStub {},
 }));
 
+jest.mock('../email/email.service', () => ({
+  EmailService: class EmailServiceStub {},
+}));
+
 jest.mock('argon2', () => ({
   argon2id: 2,
   hash: jest.fn(),
   verify: jest.fn(),
 }));
 
+import { EmailService } from '../email/email.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuthService } from './auth.service';
 
@@ -64,6 +69,13 @@ describe('AuthService', () => {
         AuthService,
         { provide: PrismaService, useValue: prisma },
         { provide: JwtService, useValue: jwt },
+        {
+          provide: EmailService,
+          useValue: {
+            sendVerificationEmail: jest.fn().mockResolvedValue(undefined),
+            sendPasswordResetEmail: jest.fn().mockResolvedValue(undefined),
+          },
+        },
       ],
     }).compile();
 

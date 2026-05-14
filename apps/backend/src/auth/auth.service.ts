@@ -9,6 +9,7 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import * as argon2 from 'argon2';
 import { createHash, randomBytes, randomUUID } from 'crypto';
+import { EmailService } from '../email/email.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
@@ -50,11 +51,18 @@ interface IssueRefreshParams {
 @Injectable()
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
+  // EmailService is injected via constructor below; kept separate for
+  // readability against the other deps.
 
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwt: JwtService,
+    private readonly email: EmailService,
   ) {}
+
+  private appBaseUrl(): string {
+    return process.env['APP_BASE_URL'] ?? 'http://localhost:4200';
+  }
 
   async register(dto: RegisterDto) {
     const existing = await this.prisma.user.findFirst({
@@ -277,6 +285,11 @@ export class AuthService {
       `[email-verification] dev-mode: token for ${user.email} = ${rawToken}`,
     );
 
+    await this.email.sendVerificationEmail({
+      to: { email: user.email },
+      verifyUrl: `${this.appBaseUrl()}/verify-email?token=${encodeURIComponent(rawToken)}`,
+    });
+
     return buildTokenResponse(expiresAt, rawToken);
   }
 
@@ -344,6 +357,11 @@ export class AuthService {
     this.logger.log(
       `[password-reset] dev-mode: token for ${user.email} = ${rawToken}`,
     );
+
+    await this.email.sendPasswordResetEmail({
+      to: { email: user.email },
+      resetUrl: `${this.appBaseUrl()}/reset-password?token=${encodeURIComponent(rawToken)}`,
+    });
 
     return buildTokenResponse(expiresAt, rawToken);
   }
