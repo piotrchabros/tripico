@@ -418,4 +418,96 @@ describe('AuthService', () => {
       );
     });
   });
+
+  // -------------------- password reset --------------------
+
+  describe('requestPasswordReset', () => {
+    it('persists hashed token + expiry, returns devToken', async () => {
+      prisma.user.findFirst.mockResolvedValue({
+        id: 'u-1',
+        email: 'a@b.com',
+      });
+      prisma.user.update.mockResolvedValue({});
+      const res = await service.requestPasswordReset('a@b.com');
+      expect(prisma.user.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'u-1' },
+          data: expect.objectContaining({
+            passwordResetTokenHash: expect.any(String),
+            passwordResetExpiresAt: expect.any(Date),
+          }),
+        }),
+      );
+      expect((res as { devToken: string }).devToken).toEqual(expect.any(String));
+    });
+
+    it('returns uniform success when email does not exist (no enumeration)', async () => {
+      prisma.user.findFirst.mockResolvedValue(null);
+      const res = await service.requestPasswordReset('ghost@example.com');
+      expect(res).toEqual({ sent: true });
+      expect(prisma.user.update).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('resetPassword', () => {
+    beforeEach(() => {
+      // resetPassword uses $transaction with a callback for user + refreshToken updates
+      (
+        prisma as unknown as { $transaction: jest.Mock }
+      ).$transaction = jest.fn(
+        async (cb: (tx: typeof prisma) => unknown) => cb(prisma),
+      );
+    });
+
+    it('updates password hash and revokes all active refresh tokens', async () => {
+      prisma.user.findFirst.mockResolvedValue({
+        id: 'u-1',
+        passwordResetExpiresAt: new Date(Date.now() + 60_000),
+      });
+      (argon2.hash as jest.Mock).mockResolvedValue('new-hash');
+      prisma.user.update.mockResolvedValue({});
+
+      await service.resetPassword('raw-token', 'newpass123');
+
+      expect(argon2.hash).toHaveBeenCalledWith(
+        'newpass123',
+        expect.objectContaining({
+          memoryCost: 65536,
+          timeCost: 3,
+          parallelism: 4,
+        }),
+      );
+      expect(prisma.user.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'u-1' },
+          data: expect.objectContaining({
+            passwordHash: 'new-hash',
+            passwordResetTokenHash: null,
+            passwordResetExpiresAt: null,
+          }),
+        }),
+      );
+      expect(prisma.refreshToken.updateMany).toHaveBeenCalledWith({
+        where: { userId: 'u-1', revokedAt: null },
+        data: { revokedAt: expect.any(Date) },
+      });
+    });
+
+    it('throws INVALID_TOKEN when no user matches', async () => {
+      prisma.user.findFirst.mockResolvedValue(null);
+      await expect(
+        service.resetPassword('x', 'newpass123'),
+      ).rejects.toThrow(/INVALID_TOKEN/);
+    });
+
+    it('throws TOKEN_EXPIRED when expiry passed', async () => {
+      prisma.user.findFirst.mockResolvedValue({
+        id: 'u-1',
+        passwordResetExpiresAt: new Date(Date.now() - 1000),
+      });
+      await expect(
+        service.resetPassword('x', 'newpass123'),
+      ).rejects.toThrow(/TOKEN_EXPIRED/);
+    });
+  });
 });

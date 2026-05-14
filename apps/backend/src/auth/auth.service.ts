@@ -16,6 +16,7 @@ import { SystemRole } from './types/authenticated-user';
 
 const REFRESH_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const EMAIL_VERIFICATION_TTL_MS = 24 * 60 * 60 * 1000; // 24h
+const PASSWORD_RESET_TTL_MS = 60 * 60 * 1000; // 1h
 
 interface AccessTokenClaims {
   sub: string;
@@ -312,6 +313,80 @@ export class AuthService {
       },
     });
     return { verified: true };
+  }
+
+  /**
+   * Initiates a password reset. Always returns a uniform "sent" response,
+   * regardless of whether the email exists (prevents email-enumeration).
+   * Token logged + included as devToken (dev mode) — same caveats as
+   * email verification (see ADR-007).
+   */
+  async requestPasswordReset(email: string) {
+    const user = await this.prisma.user.findFirst({
+      where: { email, deletedAt: null },
+      select: { id: true, email: true },
+    });
+
+    if (!user) {
+      return { sent: true } as const;
+    }
+
+    const rawToken = randomBytes(32).toString('base64url');
+    const expiresAt = new Date(Date.now() + PASSWORD_RESET_TTL_MS);
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: {
+        passwordResetTokenHash: hashEmailToken(rawToken),
+        passwordResetExpiresAt: expiresAt,
+      },
+    });
+
+    this.logger.log(
+      `[password-reset] dev-mode: token for ${user.email} = ${rawToken}`,
+    );
+
+    return { sent: true, expiresAt, devToken: rawToken } as const;
+  }
+
+  async resetPassword(rawToken: string, newPassword: string) {
+    const tokenHash = hashEmailToken(rawToken);
+    const user = await this.prisma.user.findFirst({
+      where: { passwordResetTokenHash: tokenHash, deletedAt: null },
+      select: { id: true, passwordResetExpiresAt: true },
+    });
+    if (!user) throw new BadRequestException('INVALID_TOKEN');
+    if (
+      !user.passwordResetExpiresAt ||
+      user.passwordResetExpiresAt.getTime() < Date.now()
+    ) {
+      throw new BadRequestException('TOKEN_EXPIRED');
+    }
+
+    const passwordHash = await argon2.hash(newPassword, {
+      type: argon2.argon2id,
+      memoryCost: 65536,
+      timeCost: 3,
+      parallelism: 4,
+    });
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.user.update({
+        where: { id: user.id },
+        data: {
+          passwordHash,
+          passwordResetTokenHash: null,
+          passwordResetExpiresAt: null,
+        },
+      });
+      // Revoke ALL active refresh tokens for the user — password change
+      // invalidates existing sessions per PRD §12 security baseline.
+      await tx.refreshToken.updateMany({
+        where: { userId: user.id, revokedAt: null },
+        data: { revokedAt: new Date() },
+      });
+    });
+
+    return { reset: true };
   }
 
   private signAccessToken(claims: AccessTokenClaims): Promise<string> {
