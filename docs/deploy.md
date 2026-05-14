@@ -20,6 +20,29 @@ Same-origin from the browser's POV: Vercel proxies `/api/*` to Railway, so no CO
 
 ---
 
+## Dependency management — npm version pinning
+
+Railway nixpacks runs **npm 9.9.4** (matches the `packageManager` field in `package.json`). My local default ships with Node 24 / npm 11; if I `npm install <pkg>` with the wrong npm, the lockfile metadata diverges and Railway's `npm ci` aborts with `EUSAGE: Missing: <transitive> from lock file`.
+
+**Once per machine:**
+
+```bash
+corepack enable
+corepack prepare npm@9.9.4 --activate
+```
+
+After that every `npm` command in this repo goes through corepack and uses 9.9.4. The `preinstall` script (`scripts/check-npm-version.mjs`) hard-fails any install run with a different npm version — escape hatch is `SKIP_NPM_VERSION_CHECK=1` if you really know what you're doing.
+
+**Before pushing dependency changes:**
+
+```bash
+npm run verify:lockfile
+```
+
+This runs `npm ci --dry-run` to simulate Railway's install with the current lockfile. If it passes locally, it'll pass on Railway.
+
+---
+
 ## Phase A code (done in this branch, pre-deploy)
 
 | Concern | Where | What changed |

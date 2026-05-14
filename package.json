@@ -10,6 +10,8 @@
     "@noble/hashes": "1.8.0"
   },
   "scripts": {
+    "preinstall": "node scripts/check-npm-version.mjs",
+    "verify:lockfile": "SKIP_NPM_VERSION_CHECK=1 npm ci --dry-run --include=dev --no-audit --no-fund",
     "prisma:generate": "cd apps/backend && prisma generate",
     "prisma:migrate": "cd apps/backend && prisma migrate dev",
     "prisma:deploy": "cd apps/backend && prisma migrate deploy",
