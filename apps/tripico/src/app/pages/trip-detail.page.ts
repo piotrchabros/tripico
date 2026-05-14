@@ -12,11 +12,12 @@ import { forkJoin } from 'rxjs';
 import { Membership, TripSummary } from '../core/api-types';
 import { AuthStateService } from '../core/auth-state.service';
 import { TripsApiService } from '../core/trips-api.service';
+import { TripChatComponent } from '../components/trip-chat.component';
 
 @Component({
   selector: 'app-trip-detail-page',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink],
+  imports: [CommonModule, FormsModule, RouterLink, TripChatComponent],
   template: `
     <header class="bg-white border-b border-stone-200">
       <div class="max-w-3xl mx-auto px-4 py-4 flex items-center justify-between">
@@ -233,6 +234,10 @@ import { TripsApiService } from '../core/trips-api.service';
               }
             </ul>
           </section>
+        }
+
+        @if (myRole() === 'ORGANIZER' || myRole() === 'MEMBER') {
+          <app-trip-chat [tripId]="t.id" class="block mb-6"></app-trip-chat>
         }
 
         @if (activeMembers().length > 0) {

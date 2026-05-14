@@ -14,4 +14,8 @@
 export const environment = {
   production: true,
   apiBaseUrl: '/api/v1',
+  // WebSocket can't reuse the Vercel /api/* rewrite (it's HTTP-only) so
+  // the gateway URL is the absolute Railway origin. Update this when the
+  // backend hostname changes.
+  wsBaseUrl: 'https://tripico-production.up.railway.app',
 };
