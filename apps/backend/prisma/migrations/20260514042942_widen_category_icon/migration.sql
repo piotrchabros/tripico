@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "Category" ALTER COLUMN "iconEmoji" SET DATA TYPE VARCHAR(16);

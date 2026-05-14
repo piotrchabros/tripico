@@ -6,6 +6,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { randomBytes } from 'crypto';
+import { AICategorizationService } from '../ai/ai-categorization.service';
 import { PostHogService } from '../posthog/posthog.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { TripStatus } from '../shared/constants/enums';
@@ -44,6 +45,7 @@ export class TripsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly posthog: PostHogService,
+    private readonly ai: AICategorizationService,
   ) {}
 
   async create(organizerId: string, dto: CreateTripDto) {
@@ -227,6 +229,11 @@ export class TripsService {
         destination_country: published.destinationCountry,
       },
     });
+    // Fire-and-forget AI categorization. Latency (~2–5s for the LLM
+    // round-trip) doesn't belong in the publish response path. AGENTS
+    // §3 calls for BullMQ here — this in-process detached promise is
+    // the MVP intermediate until Redis is available.
+    void this.ai.categorizeTrip(published.id);
     return published;
   }
 

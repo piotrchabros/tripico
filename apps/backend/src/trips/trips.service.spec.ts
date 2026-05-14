@@ -13,6 +13,11 @@ jest.mock('../posthog/posthog.service', () => ({
   PostHogService: class PostHogServiceStub {},
 }));
 
+jest.mock('../ai/ai-categorization.service', () => ({
+  AICategorizationService: class AICategorizationServiceStub {},
+}));
+
+import { AICategorizationService } from '../ai/ai-categorization.service';
 import { PostHogService } from '../posthog/posthog.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { TripsService } from './trips.service';
@@ -64,6 +69,10 @@ describe('TripsService', () => {
         TripsService,
         { provide: PrismaService, useValue: prisma },
         { provide: PostHogService, useValue: { capture: jest.fn() } },
+        {
+          provide: AICategorizationService,
+          useValue: { categorizeTrip: jest.fn().mockResolvedValue(undefined) },
+        },
       ],
     }).compile();
 
