@@ -26,6 +26,18 @@ export class TripsApiService {
     return this.http.get<ListEnvelope<TripSummary>>(this.base, { params });
   }
 
+  listMine(query: TripsListQuery = {}): Observable<ListEnvelope<TripSummary>> {
+    let params = new HttpParams();
+    for (const [k, v] of Object.entries(query)) {
+      if (v !== undefined && v !== null && v !== '') {
+        params = params.set(k, String(v));
+      }
+    }
+    return this.http.get<ListEnvelope<TripSummary>>(`${this.base}/mine`, {
+      params,
+    });
+  }
+
   getBySlug(slug: string): Observable<TripSummary> {
     return this.http.get<TripSummary>(`${this.base}/${slug}`);
   }

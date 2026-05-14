@@ -30,6 +30,12 @@ export const appRoutes: Route[] = [
       import('./pages/verify-email.page').then((m) => m.VerifyEmailPage),
   },
   {
+    path: 'me/trips',
+    canMatch: [authMatchGuard],
+    loadComponent: () =>
+      import('./pages/my-trips.page').then((m) => m.MyTripsPage),
+  },
+  {
     path: 'wycieczka/:slug',
     loadComponent: () =>
       import('./pages/trip-detail.page').then((m) => m.TripDetailPage),

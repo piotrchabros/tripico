@@ -17,6 +17,12 @@ import { TripsApiService } from '../core/trips-api.service';
         <nav class="flex items-center gap-4 text-sm">
           @if (authState.isAuthenticated()) {
             <a
+              routerLink="/me/trips"
+              class="text-stone-600 hover:text-teal-600"
+            >
+              Moje wycieczki
+            </a>
+            <a
               routerLink="/create"
               class="bg-teal-600 text-white px-3 py-1.5 rounded-lg hover:bg-teal-700"
             >
