@@ -20,12 +20,7 @@
             "input": "apps/tripico/public"
           }
         ],
-        "styles": ["apps/tripico/src/styles.scss"],
-        "server": "apps/tripico/src/main.server.ts",
-        "ssr": {
-          "entry": "apps/tripico/src/server.ts"
-        },
-        "outputMode": "server"
+        "styles": ["apps/tripico/src/styles.scss"]
       },
       "configurations": {
         "production": {
