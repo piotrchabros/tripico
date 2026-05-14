@@ -30,3 +30,12 @@ export type TripMemberRole = (typeof TRIP_MEMBER_ROLES)[number];
 
 export const CURRENCY_CODES = ['PLN', 'EUR', 'USD'] as const;
 export type CurrencyCode = (typeof CURRENCY_CODES)[number];
+
+export const BOARD_POST_TYPES = [
+  'TEXT',
+  'PHOTO',
+  'VIDEO',
+  'POLL',
+  'MIXED',
+] as const;
+export type BoardPostType = (typeof BOARD_POST_TYPES)[number];

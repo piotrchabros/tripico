@@ -57,6 +57,7 @@ model User {
   pushSubscriptions PushSubscription[]
   organizedTrips    Trip[]              @relation("Organizer")
   memberships       TripMembership[]
+  boardPosts        BoardPost[]
 
   @@index([email])
   @@index([slug])
@@ -186,6 +187,7 @@ model Trip {
 
   organizer         User                      @relation("Organizer", fields: [organizerId], references: [id], onDelete: Restrict)
   memberships       TripMembership[]
+  boardPosts        BoardPost[]
 
   @@index([status, deletedAt])
   @@index([organizerId])
@@ -213,4 +215,35 @@ model TripMembership {
   @@unique([tripId, userId])
   @@index([tripId, role])
   @@index([userId])
+}
+
+// =========================================================================
+// BOARD POSTS (announcements, photos, polls — per trip)
+// =========================================================================
+
+enum BoardPostType {
+  TEXT
+  PHOTO
+  VIDEO
+  POLL
+  MIXED
+}
+
+model BoardPost {
+  id        String        @id @default(uuid()) @db.Uuid
+  tripId    String        @db.Uuid
+  authorId  String        @db.Uuid
+  type      BoardPostType @default(TEXT)
+  content   Json
+  pinnedAt  DateTime?
+
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+  deletedAt DateTime?
+
+  trip      Trip          @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  author    User          @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([tripId, createdAt(sort: Desc)])
+  @@index([authorId])
 }
