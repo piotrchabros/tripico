@@ -1,6 +1,9 @@
 import * as dotenv from 'dotenv';
 dotenv.config({ path: 'apps/backend/.env' });
 
+import { bootstrapSentry } from './shared/sentry/sentry.bootstrap';
+bootstrapSentry();
+
 import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import cookieParser from 'cookie-parser';

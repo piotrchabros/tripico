@@ -7,4 +7,10 @@ export const environment = {
   production: false,
   apiBaseUrl: 'http://localhost:3000/api/v1',
   wsBaseUrl: 'http://localhost:3000',
+  // Empty key disables PostHog locally. Drop your dev project's
+  // `phc_...` here if you want to send events from `nx serve`.
+  posthogKey: '',
+  posthogHost: 'https://eu.i.posthog.com',
+  // Empty disables Sentry locally — matches PostHog pattern.
+  sentryDsn: '',
 };

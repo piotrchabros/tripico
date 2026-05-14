@@ -5,6 +5,7 @@ import {
   HttpException,
   HttpStatus,
 } from '@nestjs/common';
+import * as Sentry from '@sentry/node';
 import { Request, Response } from 'express';
 import { Logger as PinoLogger } from 'nestjs-pino';
 
@@ -61,6 +62,11 @@ export class HttpExceptionFilter implements ExceptionFilter {
         `${request.method} ${request.url} → ${status}`,
         exception instanceof Error ? exception.stack : undefined,
       );
+      // Capture 5xx in Sentry. 4xx are expected client mistakes and
+      // would just be noise. No-op when SENTRY_DSN is unset.
+      if (exception instanceof Error) {
+        Sentry.captureException(exception);
+      }
     }
 
     response.status(status).type('application/problem+json').json(body);

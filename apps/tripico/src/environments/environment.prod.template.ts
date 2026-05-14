@@ -12,4 +12,5 @@ export const environment = {
   wsBaseUrl: 'https://tripico-production.up.railway.app',
   posthogKey: '__POSTHOG_API_KEY__',
   posthogHost: 'https://eu.i.posthog.com',
+  sentryDsn: '__SENTRY_DSN_FRONTEND__',
 };

@@ -13,6 +13,9 @@ import { provideRouter, withComponentInputBinding } from '@angular/router';
 import { appRoutes } from './app.routes';
 import { authInterceptor } from './core/auth.interceptor';
 import { AnalyticsService } from './core/analytics.service';
+import { initSentry, sentryAngularProviders } from './core/sentry.bootstrap';
+
+initSentry();
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -20,6 +23,7 @@ export const appConfig: ApplicationConfig = {
     provideBrowserGlobalErrorListeners(),
     provideRouter(appRoutes, withComponentInputBinding()),
     provideHttpClient(withFetch(), withInterceptors([authInterceptor])),
+    ...sentryAngularProviders(),
     provideAppInitializer(() => {
       inject(AnalyticsService).init();
     }),

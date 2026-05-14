@@ -34,6 +34,7 @@ const outputPath = join(
 // `__` prefix sentinel the same way (silent skip).
 const TOKENS = {
   __POSTHOG_API_KEY__: process.env.POSTHOG_API_KEY ?? '',
+  __SENTRY_DSN_FRONTEND__: process.env.SENTRY_DSN_FRONTEND ?? '',
 };
 
 let content = readFileSync(templatePath, 'utf-8');
