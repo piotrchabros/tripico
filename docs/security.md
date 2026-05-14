@@ -4,6 +4,28 @@
 
 The canonical security rules are in [AGENTS.md §8](../AGENTS.md) — Helmet, CORS allowlist, rate limiting, input validation, webhook signatures, etc. This file complements those with **runbook-style** info: known surfaces, threat model notes, incident history.
 
+## Current implementation status (May 2026)
+
+| Control | Status |
+|---|---|
+| Argon2id password hashing (PRD §12 params) | ✅ implemented + tested |
+| RS256 JWT access tokens (15 min, full claim set) | ✅ implemented |
+| Refresh token rotation + family revocation | ✅ implemented + tested ([ADR-006](./decisions.md)) |
+| httpOnly Secure SameSite=Strict refresh cookie | ✅ implemented (Secure flag prod-only) |
+| Global JwtAuthGuard + @Public opt-out | ✅ implemented ([ADR-005](./decisions.md)) |
+| Email-existence non-disclosure on bad-login | ✅ (`INVALID_CREDENTIALS` for both unknown email + wrong password) |
+| RFC 7807 problem+json error envelope | ✅ via `HttpExceptionFilter` |
+| Email verification (+ gate on create-trip / join) | ✅ — but **delivery is mock** ([ADR-007](./decisions.md), see flag below) |
+| Helmet middleware | ❌ not added yet |
+| CORS allowlist (currently `cors: { origin: true }` on chat ns) | ❌ — global CORS off, chat ns reflects origin |
+| Rate limiting (`@nestjs/throttler` + Redis) | ❌ |
+| `@nestjs/config` + Zod schema validation on boot | ❌ — currently reads `process.env` directly |
+| Webhook signature verification | n/a — no webhooks yet |
+| Admin IP allowlist | n/a — no admin endpoints yet |
+| WebSocket JWT auth (handshake) | ✅ inside `ChatGateway.handleConnection` |
+| WebSocket room membership check on join_trip | ✅ via `ChatService.canParticipate` |
+| Persist-before-broadcast for chat | ✅ |
+
 ## Threat model — MVP scope
 
 _To be filled in. Cover at minimum:_
@@ -11,27 +33,41 @@ _To be filled in. Cover at minimum:_
 - Webhook surface (Stripe, R2, Cloudflare)
 - File upload surface (R2 presigned URLs, NSFW pipeline)
 - Admin surface (`/admin` endpoints + IP allowlist)
-- WebSocket surface (`WsJwtAuthGuard` + room membership checks)
+- WebSocket surface (gateway JWT verification + room membership checks)
 
 ## Known surfaces requiring extra review
 
-| Area | Why | Mitigation owner |
+| Area | Why | Mitigation |
 |---|---|---|
-| Stripe webhooks | Idempotency + signature verification critical | _tbd_ |
-| R2 presigned URLs | TTL + content-type + size limits enforced server-side | _tbd_ |
-| Trip join flow | Race condition on `currentMembers` increment | _tbd (transaction)_ |
-| Chat broadcasts | User must be in room before send | `TripMemberGuard` |
+| Membership approve / leave | Race on `Trip.currentMembers` increment / decrement | ✅ `$transaction` wrapping both updates |
+| Refresh cookie | Token theft via XSS / stolen cookie | ✅ httpOnly + Secure (prod) + family rotation + reuse revocation |
+| Email verification `devToken` | Token leaked in HTTP response in dev mode | ⚠️ **must gate behind env flag before any prod deploy** (see [ADR-007](./decisions.md)) |
+| JWT private key | Local PEM in `apps/backend/.env` (gitignored) | ✅ — but document handoff to production secret manager when deploying |
+| Chat broadcast | User outside room could receive others' messages | ✅ gateway joins `trip:<id>` room only after `canParticipate` check; `server.to(room).emit(...)` scopes |
 
 ## Secrets management
 
-- Local: `.env.local` (gitignored)
-- Production: Railway/Vercel env vars
-- Validation: Zod schema in `apps/backend/src/config/` (TBD)
-- Failed validation → crash on boot (do NOT run with bad config)
+- **Local**: `apps/backend/.env` (gitignored via root `.gitignore`). `dotenv` loads at backend boot.
+- **Production (planned)**: Railway / Vercel env vars
+- **Validation**: Zod schema in `apps/backend/src/config/` — **TBD**. Currently `JwtModule.registerAsync` throws clearly when keys missing, but other env vars are unvalidated.
+- **Failed validation** → crash on boot (do NOT run with bad config) — planned, not enforced yet.
 
-## .env.example
+### Generating JWT keys (per dev machine)
 
-Authoritative list of required env vars lives in `.env.example` at repo root. Every new env var added to code → update `.env.example` in the same PR.
+```bash
+openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out private.pem
+openssl rsa -pubout -in private.pem -out public.pem
+# paste contents into apps/backend/.env as JWT_PRIVATE_KEY / JWT_PUBLIC_KEY
+```
+
+## `.env.example`
+
+Authoritative list of required env vars lives in `apps/backend/.env.example`. Every new env var added to code → update `.env.example` in the same PR.
+
+Currently documented:
+- `DATABASE_URL`
+- `JWT_PRIVATE_KEY` (multi-line PEM)
+- `JWT_PUBLIC_KEY` (multi-line PEM)
 
 ## Incident history
 
