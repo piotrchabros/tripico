@@ -5,17 +5,39 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as argon2 from 'argon2';
-import { randomUUID } from 'crypto';
+import { createHash, randomBytes, randomUUID } from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
+import { SystemRole } from './types/authenticated-user';
+
+const REFRESH_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
 interface AccessTokenClaims {
   sub: string;
   email: string;
-  role: string;
+  role: SystemRole;
   isPremium: boolean;
   jti: string;
+}
+
+interface AuthSession {
+  accessToken: string;
+  refreshToken: string;
+  refreshExpiresAt: Date;
+  user: {
+    id: string;
+    email: string;
+    displayName: string;
+    slug: string;
+  };
+}
+
+interface IssueRefreshParams {
+  userId: string;
+  family: string;
+  userAgent?: string;
+  ip?: string;
 }
 
 @Injectable()
@@ -64,7 +86,10 @@ export class AuthService {
     });
   }
 
-  async login(dto: LoginDto) {
+  async login(
+    dto: LoginDto,
+    meta: { userAgent?: string; ip?: string } = {},
+  ): Promise<AuthSession> {
     const user = await this.prisma.user.findFirst({
       where: { email: dto.email, deletedAt: null },
       select: {
@@ -87,18 +112,25 @@ export class AuthService {
       throw new UnauthorizedException('INVALID_CREDENTIALS');
     }
 
-    const claims: AccessTokenClaims = {
+    const family = randomUUID();
+    const accessToken = await this.signAccessToken({
       sub: user.id,
       email: user.email,
-      role: user.role,
+      role: user.role as SystemRole,
       isPremium: user.isPremium,
       jti: randomUUID(),
-    };
-
-    const accessToken = await this.jwt.signAsync(claims);
+    });
+    const refresh = await this.issueRefreshToken({
+      userId: user.id,
+      family,
+      userAgent: meta.userAgent,
+      ip: meta.ip,
+    });
 
     return {
       accessToken,
+      refreshToken: refresh.token,
+      refreshExpiresAt: refresh.expiresAt,
       user: {
         id: user.id,
         email: user.email,
@@ -107,4 +139,120 @@ export class AuthService {
       },
     };
   }
+
+  async refresh(
+    rawToken: string,
+    meta: { userAgent?: string; ip?: string } = {},
+  ): Promise<AuthSession> {
+    const tokenHash = hashRefreshToken(rawToken);
+
+    const existing = await this.prisma.refreshToken.findUnique({
+      where: { tokenHash },
+      select: {
+        id: true,
+        userId: true,
+        family: true,
+        expiresAt: true,
+        revokedAt: true,
+      },
+    });
+
+    if (!existing) {
+      throw new UnauthorizedException('INVALID_REFRESH_TOKEN');
+    }
+
+    if (existing.revokedAt) {
+      // Reuse detected — revoke entire family (theft mitigation per PRD §12)
+      await this.prisma.refreshToken.updateMany({
+        where: { family: existing.family, revokedAt: null },
+        data: { revokedAt: new Date() },
+      });
+      throw new UnauthorizedException('REFRESH_REUSE_DETECTED');
+    }
+
+    if (existing.expiresAt.getTime() <= Date.now()) {
+      throw new UnauthorizedException('REFRESH_EXPIRED');
+    }
+
+    const user = await this.prisma.user.findFirst({
+      where: { id: existing.userId, deletedAt: null },
+      select: {
+        id: true,
+        email: true,
+        role: true,
+        isPremium: true,
+        displayName: true,
+        slug: true,
+      },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException('USER_INACTIVE');
+    }
+
+    // Rotate: revoke old, issue new in same family
+    await this.prisma.refreshToken.update({
+      where: { id: existing.id },
+      data: { revokedAt: new Date() },
+    });
+
+    const accessToken = await this.signAccessToken({
+      sub: user.id,
+      email: user.email,
+      role: user.role as SystemRole,
+      isPremium: user.isPremium,
+      jti: randomUUID(),
+    });
+    const refresh = await this.issueRefreshToken({
+      userId: user.id,
+      family: existing.family,
+      userAgent: meta.userAgent,
+      ip: meta.ip,
+    });
+
+    return {
+      accessToken,
+      refreshToken: refresh.token,
+      refreshExpiresAt: refresh.expiresAt,
+      user: {
+        id: user.id,
+        email: user.email,
+        displayName: user.displayName,
+        slug: user.slug,
+      },
+    };
+  }
+
+  async logout(rawToken: string | undefined): Promise<void> {
+    if (!rawToken) return;
+    const tokenHash = hashRefreshToken(rawToken);
+    await this.prisma.refreshToken.updateMany({
+      where: { tokenHash, revokedAt: null },
+      data: { revokedAt: new Date() },
+    });
+  }
+
+  private signAccessToken(claims: AccessTokenClaims): Promise<string> {
+    return this.jwt.signAsync(claims);
+  }
+
+  private async issueRefreshToken(params: IssueRefreshParams) {
+    const token = randomBytes(32).toString('base64url');
+    const expiresAt = new Date(Date.now() + REFRESH_TTL_MS);
+    await this.prisma.refreshToken.create({
+      data: {
+        userId: params.userId,
+        tokenHash: hashRefreshToken(token),
+        family: params.family,
+        expiresAt,
+        userAgent: params.userAgent ?? null,
+        ip: params.ip ?? null,
+      },
+    });
+    return { token, expiresAt };
+  }
+}
+
+function hashRefreshToken(raw: string): string {
+  return createHash('sha256').update(raw).digest('hex');
 }
