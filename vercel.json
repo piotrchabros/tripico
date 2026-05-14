@@ -7,7 +7,7 @@
   "rewrites": [
     {
       "source": "/api/(.*)",
-      "destination": "https://REPLACE-WITH-RAILWAY-DOMAIN.up.railway.app/api/$1"
+      "destination": "https://tripico-production.up.railway.app/api/$1"
     }
   ]
 }
