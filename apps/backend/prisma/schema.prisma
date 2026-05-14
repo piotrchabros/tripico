@@ -58,6 +58,7 @@ model User {
   organizedTrips    Trip[]              @relation("Organizer")
   memberships       TripMembership[]
   boardPosts        BoardPost[]
+  messages          Message[]
 
   @@index([email])
   @@index([slug])
@@ -188,6 +189,7 @@ model Trip {
   organizer         User                      @relation("Organizer", fields: [organizerId], references: [id], onDelete: Restrict)
   memberships       TripMembership[]
   boardPosts        BoardPost[]
+  chatChannels      ChatChannel[]
 
   @@index([status, deletedAt])
   @@index([organizerId])
@@ -246,4 +248,44 @@ model BoardPost {
 
   @@index([tripId, createdAt(sort: Desc)])
   @@index([authorId])
+}
+
+// =========================================================================
+// CHAT (group chat — MVP scope; organizer DM and attachments deferred)
+// =========================================================================
+
+enum ChatType {
+  TRIP_GROUP
+  ORGANIZER_DM
+}
+
+model ChatChannel {
+  id        String    @id @default(uuid()) @db.Uuid
+  type      ChatType
+  tripId    String    @db.Uuid
+
+  trip      Trip      @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  messages  Message[]
+
+  createdAt DateTime  @default(now())
+
+  @@unique([tripId, type])
+  @@index([tripId])
+}
+
+model Message {
+  id        String      @id @default(uuid()) @db.Uuid
+  channelId String      @db.Uuid
+  senderId  String      @db.Uuid
+  text      String      @db.Text
+
+  channel   ChatChannel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  sender    User        @relation(fields: [senderId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime    @default(now())
+  editedAt  DateTime?
+  deletedAt DateTime?
+
+  @@index([channelId, createdAt(sort: Desc)])
+  @@index([senderId])
 }
