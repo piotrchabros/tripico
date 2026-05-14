@@ -35,8 +35,11 @@ async function bootstrap() {
   app.useGlobalFilters(new HttpExceptionFilter());
 
   const port = process.env.PORT || 3000;
-  await app.listen(port);
-  Logger.log(`🚀 API running on http://localhost:${port}/api/v1`);
+  // Listen on 0.0.0.0 explicitly so the container is reachable from the
+  // Railway/Vercel router, not just the loopback interface (which is the
+  // NestJS default and causes 502 "Application failed to respond").
+  await app.listen(port, '0.0.0.0');
+  Logger.log(`🚀 API running on port ${port}/api/v1`);
 }
 
 function parseCorsOrigin(raw: string | undefined): string[] | undefined {
