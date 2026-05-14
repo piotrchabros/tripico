@@ -13,6 +13,7 @@ import {
   CurrencyCode,
   TransportType,
 } from '../core/api-types';
+import { AnalyticsService } from '../core/analytics.service';
 import { TripsApiService } from '../core/trips-api.service';
 
 const TRANSPORT_OPTIONS: { value: TransportType; label: string }[] = [
@@ -226,6 +227,7 @@ export class CreateTripPage {
   private readonly fb = inject(FormBuilder);
   private readonly tripsApi = inject(TripsApiService);
   private readonly router = inject(Router);
+  private readonly analytics = inject(AnalyticsService);
 
   protected readonly transportOptions = TRANSPORT_OPTIONS;
   protected readonly currencyOptions = CURRENCY_OPTIONS;
@@ -291,6 +293,14 @@ export class CreateTripPage {
     this.tripsApi.create(payload).subscribe({
       next: (trip) => {
         this.loading.set(false);
+        this.analytics.capture('trip_created', {
+          trip_id: trip.id,
+          transport: trip.transport,
+          duration_days: trip.durationDays,
+          price_per_person: Number(trip.pricePerPerson),
+          currency: trip.currency,
+          max_members: trip.maxMembers,
+        });
         this.router.navigate(['/wycieczka', trip.slug]);
       },
       error: (err) => {

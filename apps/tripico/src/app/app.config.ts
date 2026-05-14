@@ -1,5 +1,7 @@
 import {
   ApplicationConfig,
+  inject,
+  provideAppInitializer,
   provideBrowserGlobalErrorListeners,
 } from '@angular/core';
 import {
@@ -10,6 +12,7 @@ import { provideHttpClient, withFetch, withInterceptors } from '@angular/common/
 import { provideRouter, withComponentInputBinding } from '@angular/router';
 import { appRoutes } from './app.routes';
 import { authInterceptor } from './core/auth.interceptor';
+import { AnalyticsService } from './core/analytics.service';
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -17,5 +20,8 @@ export const appConfig: ApplicationConfig = {
     provideBrowserGlobalErrorListeners(),
     provideRouter(appRoutes, withComponentInputBinding()),
     provideHttpClient(withFetch(), withInterceptors([authInterceptor])),
+    provideAppInitializer(() => {
+      inject(AnalyticsService).init();
+    }),
   ],
 };

@@ -9,6 +9,11 @@ jest.mock('../prisma/prisma.service', () => ({
   PrismaService: class PrismaServiceStub {},
 }));
 
+jest.mock('../posthog/posthog.service', () => ({
+  PostHogService: class PostHogServiceStub {},
+}));
+
+import { PostHogService } from '../posthog/posthog.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { TripsService } from './trips.service';
 
@@ -58,6 +63,7 @@ describe('TripsService', () => {
       providers: [
         TripsService,
         { provide: PrismaService, useValue: prisma },
+        { provide: PostHogService, useValue: { capture: jest.fn() } },
       ],
     }).compile();
 

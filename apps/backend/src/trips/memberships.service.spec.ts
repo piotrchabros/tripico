@@ -14,7 +14,12 @@ jest.mock('../notifications/notifications.service', () => ({
   NotificationsService: class NotificationsServiceStub {},
 }));
 
+jest.mock('../posthog/posthog.service', () => ({
+  PostHogService: class PostHogServiceStub {},
+}));
+
 import { NotificationsService } from '../notifications/notifications.service';
+import { PostHogService } from '../posthog/posthog.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { MembershipsService } from './memberships.service';
 
@@ -54,6 +59,7 @@ describe('MembershipsService', () => {
         MembershipsService,
         { provide: PrismaService, useValue: prisma },
         { provide: NotificationsService, useValue: notifications },
+        { provide: PostHogService, useValue: { capture: jest.fn() } },
       ],
     }).compile();
     service = module.get(MembershipsService);

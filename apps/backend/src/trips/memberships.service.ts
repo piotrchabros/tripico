@@ -6,6 +6,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { NotificationsService } from '../notifications/notifications.service';
+import { PostHogService } from '../posthog/posthog.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { TripMemberRole } from '../shared/constants/enums';
 import { JoinTripDto } from './dto/join-trip.dto';
@@ -15,6 +16,7 @@ export class MembershipsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly notifications: NotificationsService,
+    private readonly posthog: PostHogService,
   ) {}
 
   async requestJoin(tripId: string, userId: string, dto: JoinTripDto) {
@@ -77,6 +79,12 @@ export class MembershipsService {
       requesterId: userId,
     });
 
+    this.posthog.capture({
+      distinctId: userId,
+      event: 'join_requested',
+      properties: { trip_id: tripId, membership_id: membership.id },
+    });
+
     return membership;
   }
 
@@ -120,6 +128,16 @@ export class MembershipsService {
     await this.notifications.create(updated.userId, 'JOIN_REQUEST_APPROVED', {
       tripId: membership.trip.id,
       membershipId: membership.id,
+    });
+
+    this.posthog.capture({
+      distinctId: callerId,
+      event: 'join_approved',
+      properties: {
+        trip_id: membership.trip.id,
+        membership_id: membership.id,
+        approved_user_id: updated.userId,
+      },
     });
 
     return updated;

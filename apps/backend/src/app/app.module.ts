@@ -6,12 +6,14 @@ import { BoardModule } from '../board/board.module';
 import { ChatModule } from '../chat/chat.module';
 import { HealthModule } from '../health/health.module';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { PostHogModule } from '../posthog/posthog.module';
 import { PrismaModule } from '../prisma/prisma.module';
 import { TripsModule } from '../trips/trips.module';
 
 @Module({
   imports: [
     PrismaModule,
+    PostHogModule,
     AuthModule,
     NotificationsModule,
     TripsModule,

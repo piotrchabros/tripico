@@ -6,6 +6,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { randomBytes } from 'crypto';
+import { PostHogService } from '../posthog/posthog.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { TripStatus } from '../shared/constants/enums';
 import { slugify } from '../shared/utils/slug';
@@ -40,7 +41,10 @@ const TRIP_SUMMARY_SELECT = {
 
 @Injectable()
 export class TripsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly posthog: PostHogService,
+  ) {}
 
   async create(organizerId: string, dto: CreateTripDto) {
     this.assertValidDateRange(dto.startDate, dto.endDate);
@@ -207,11 +211,23 @@ export class TripsService {
     if (trip.status !== 'DRAFT') {
       throw new BadRequestException('TRIP_NOT_DRAFT');
     }
-    return this.prisma.trip.update({
+    const published = await this.prisma.trip.update({
       where: { id: tripId },
       data: { status: 'PUBLISHED', publishedAt: new Date() },
       select: TRIP_SUMMARY_SELECT,
     });
+    this.posthog.capture({
+      distinctId: userId,
+      event: 'trip_published',
+      properties: {
+        trip_id: published.id,
+        transport: published.transport,
+        duration_days: published.durationDays,
+        max_members: published.maxMembers,
+        destination_country: published.destinationCountry,
+      },
+    });
+    return published;
   }
 
   async cancel(tripId: string, userId: string) {
