@@ -14,6 +14,17 @@ async function bootstrap() {
 
   app.use(cookieParser());
 
+  // CORS: allow the local Angular dev server + Vercel preview pattern in prod.
+  // Production hardening (allowlist via env, tighter methods/headers) tracked
+  // in docs/security.md.
+  app.enableCors({
+    origin:
+      process.env['NODE_ENV'] === 'production'
+        ? [/\.tripico\.pl$/, /-tripico\.vercel\.app$/]
+        : ['http://localhost:4200'],
+    credentials: true,
+  });
+
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
